@@ -1,27 +1,49 @@
-$color-bg-auth: #f7f3ea;
-$color-bg-dashboard: #efe7d6;
-$color-surface: #fffdf8;
-$color-primary: #365314;
-$color-border: #d6ccb8;
-$color-text: #2f2418;
-$color-text-muted: #6b5c4a;
-$color-error: #b42318;
-$color-success: #2f6b2f;
+$color-bg-auth-dark: #0a0a0b;
+$color-bg-dashboard-dark: #111214;
+$color-surface-dark: #17181b;
+$color-primary-dark: #d1d5db;
+$color-border-dark: #2b2d31;
+$color-text-dark: #f3f4f6;
+$color-text-muted-dark: #9ca3af;
+$color-error-dark: #f87171;
+$color-success-dark: #86efac;
+
+$color-bg-auth-light: #f4f4f5;
+$color-bg-dashboard-light: #e5e7eb;
+$color-surface-light: #ffffff;
+$color-primary-light: #18181b;
+$color-border-light: #d4d4d8;
+$color-text-light: #18181b;
+$color-text-muted-light: #52525b;
+$color-error-light: #dc2626;
+$color-success-light: #15803d;
 
 $font-sans: 'Manrope', 'Segoe UI', sans-serif;
 $font-display: 'Fraunces', 'Georgia', serif;
 
 :root {
-  --color-bg-auth: #{$color-bg-auth};
-  --color-bg-dashboard: #{$color-bg-dashboard};
-  --color-surface: #{$color-surface};
-  --color-primary: #{$color-primary};
-  --color-border: #{$color-border};
-  --color-text: #{$color-text};
-  --color-text-muted: #{$color-text-muted};
-  --color-error: #{$color-error};
-  --color-success: #{$color-success};
+  --color-bg-auth: #{$color-bg-auth-dark};
+  --color-bg-dashboard: #{$color-bg-dashboard-dark};
+  --color-surface: #{$color-surface-dark};
+  --color-primary: #{$color-primary-dark};
+  --color-border: #{$color-border-dark};
+  --color-text: #{$color-text-dark};
+  --color-text-muted: #{$color-text-muted-dark};
+  --color-error: #{$color-error-dark};
+  --color-success: #{$color-success-dark};
 
   --font-sans: #{$font-sans};
   --font-display: #{$font-display};
+}
+
+:root[data-theme='light'] {
+  --color-bg-auth: #{$color-bg-auth-light};
+  --color-bg-dashboard: #{$color-bg-dashboard-light};
+  --color-surface: #{$color-surface-light};
+  --color-primary: #{$color-primary-light};
+  --color-border: #{$color-border-light};
+  --color-text: #{$color-text-light};
+  --color-text-muted: #{$color-text-muted-light};
+  --color-error: #{$color-error-light};
+  --color-success: #{$color-success-light};
 }

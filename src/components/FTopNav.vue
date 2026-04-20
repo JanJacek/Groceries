@@ -23,18 +23,34 @@
           </RouterLink>
         </div>
       </div>
-      <FUserMenu />
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface text-muted transition hover:bg-primary/10 hover:text-text"
+          :aria-label="isDarkTheme ? 'Przełącz na jasny motyw' : 'Przełącz na ciemny motyw'"
+          @click="toggleTheme"
+        >
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path :d="isDarkTheme ? mdiWhiteBalanceSunny : mdiMoonWaningCrescent" />
+          </svg>
+        </button>
+        <FUserMenu />
+      </div>
     </nav>
   </header>
 </template>
 
 <script setup lang="ts">
+import { mdiMoonWaningCrescent, mdiWhiteBalanceSunny } from '@mdi/js'
+import { useTheme } from '@/composables/useTheme'
 import FUserMenu from '@/components/FUserMenu.vue'
 
 const links = [
   { to: '/', label: 'Listy' },
   { to: '/settings', label: 'Ustawienia' },
 ]
+
+const { isDarkTheme, toggleTheme } = useTheme()
 </script>
 
 <style scoped></style>
