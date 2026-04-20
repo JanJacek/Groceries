@@ -13,41 +13,42 @@
       <div class="grid gap-6">
         <template v-if="shopping.selectedList">
           <FCard custom-class="overflow-hidden p-0">
-            <div class="grid gap-5 bg-surface p-6">
+            <div class="grid gap-4 bg-surface p-4">
               <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div class="mb-2 flex items-center gap-3">
-                    <span
-                      class="h-3 w-3 rounded-full"
-                      :style="{ backgroundColor: listColor }"
+                <div class="min-w-0 flex-1">
+                  <div class="mb-2 flex items-center justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                      <span
+                        class="h-3 w-3 rounded-full"
+                        :style="{ backgroundColor: listColor }"
+                      />
+                      <h1 class="m-0 text-3xl text-text">{{ shopping.selectedList.name }}</h1>
+                      <span
+                        class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
+                        :title="memberCountLabel"
+                      >
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path :d="memberCountIcon" />
+                        </svg>
+                        {{ shopping.members.length }}
+                      </span>
+                    </div>
+                    <FButton
+                      type="button"
+                      variant="ghost"
+                      bordered
+                      icon-only
+                      :icon="mdiCogOutline"
+                      aria-label="Ustawienia listy"
+                      @click="openListSettings(shopping.selectedList.id)"
                     />
-                    <h1 class="m-0 text-3xl text-text">{{ shopping.selectedList.name }}</h1>
-                    <span
-                      class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
-                      :title="memberCountLabel"
-                    >
-                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path :d="memberCountIcon" />
-                      </svg>
-                      {{ shopping.members.length }}
-                    </span>
                   </div>
-                  <p class="m-0 max-w-2xl text-sm text-muted">
-                    {{ shopping.selectedList.note || 'Lista bez notatki. Dodaj opis, aby szybciej rozpoznać cel zakupów.' }}
-                  </p>
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-                  <FButton
-                    type="button"
-                    variant="ghost"
-                    bordered
-                    icon-only
-                    :icon="mdiCogOutline"
-                    aria-label="Ustawienia listy"
-                    @click="openListSettings(shopping.selectedList.id)"
-                  />
-                  <FButton type="button" @click="openCreateItem">Dodaj produkt</FButton>
+                  <div class="mt-3 flex items-center justify-between gap-3">
+                    <p class="m-0 max-w-2xl text-sm text-muted">
+                      {{ shopping.selectedList.note || 'Lista bez notatki. Dodaj opis, aby szybciej rozpoznać cel zakupów.' }}
+                    </p>
+                    <FButton type="button" @click="openCreateItem">Dodaj produkt</FButton>
+                  </div>
                 </div>
               </div>
             </div>
@@ -292,6 +293,10 @@
           <input v-model="itemForm.name" type="text" class="rounded-[10px] border border-border px-3 py-2 text-text outline-none" />
         </label>
         <label class="grid gap-1 text-sm text-text">
+          Warunek
+          <FSelect v-model="itemForm.conditionType" :options="itemConditionOptions" />
+        </label>
+        <label class="grid gap-1 text-sm text-text">
           Ilość
           <input
             v-model.number="itemForm.quantity"
@@ -323,6 +328,7 @@ import FButton from '@/components/FButton.vue'
 import FCard from '@/components/FCard.vue'
 import FMessage from '@/components/FMessage.vue'
 import FPopup from '@/components/FPopup.vue'
+import FSelect from '@/components/FSelect.vue'
 import FShoppingItemTable from '@/components/FShoppingItemTable.vue'
 import FShoppingSidebar from '@/components/FShoppingSidebar.vue'
 import { useContactsStore } from '@/stores/contacts'
@@ -358,9 +364,11 @@ const listForm = ref({
 const itemForm = ref<{
   name: string
   quantity: number
+  conditionType: '' | 'promotion'
 }>({
   name: '',
   quantity: 1,
+  conditionType: '',
 })
 
 const listColorMap: Record<string, string> = {
@@ -377,6 +385,10 @@ const listColorOptions = [
   { label: 'Berry', value: 'berry' },
   { label: 'Ocean', value: 'ocean' },
   { label: 'Charcoal', value: 'charcoal' },
+]
+const itemConditionOptions = [
+  { label: 'Brak', value: '' },
+  { label: 'Promotion', value: 'promotion' },
 ]
 
 const filteredItems = computed(() => shopping.items)
@@ -417,6 +429,7 @@ const resetItemForm = () => {
   itemForm.value = {
     name: '',
     quantity: 1,
+    conditionType: '',
   }
 }
 
@@ -568,6 +581,7 @@ const openEditItem = (itemId: string) => {
   itemForm.value = {
     name: item.name,
     quantity: item.quantity,
+    conditionType: item.conditionType ?? '',
   }
   showItemPopup.value = true
 }
@@ -592,11 +606,15 @@ const submitItem = async () => {
   savingItem.value = true
   try {
     if (editingItemId.value) {
-      await shopping.updateItem(editingItemId.value, itemForm.value)
+      await shopping.updateItem(editingItemId.value, {
+        ...itemForm.value,
+        conditionType: itemForm.value.conditionType || null,
+      })
     } else {
       await shopping.createItem({
         listId: shopping.selectedList.id,
         ...itemForm.value,
+        conditionType: itemForm.value.conditionType || null,
       })
     }
     showItemPopup.value = false

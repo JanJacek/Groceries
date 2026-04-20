@@ -8,6 +8,11 @@
           </svg>
         </span>
       </template>
+      <template v-else-if="header.key === 'conditionType'">
+        <span class="inline-flex items-center justify-center text-primary" aria-label="Warunek">
+          Warunek
+        </span>
+      </template>
     </template>
 
     <template #cell="{ row, header }">
@@ -19,6 +24,19 @@
 
       <template v-else-if="header.key === 'quantity'">
         {{ formatQuantity(getItem(row).quantity) }}
+      </template>
+
+      <template v-else-if="header.key === 'conditionType'">
+        <span
+          v-if="getItem(row).conditionType === 'promotion'"
+          class="inline-flex items-center justify-center text-primary"
+          title="Promotion"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path :d="mdiBrightnessPercent" />
+          </svg>
+        </span>
+        <span v-else class="text-muted">—</span>
       </template>
 
       <template v-else-if="header.key === 'status'">
@@ -51,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { mdiBasketOutline, mdiPencilOutline } from '@mdi/js'
+import { mdiBasketOutline, mdiBrightnessPercent, mdiPencilOutline } from '@mdi/js'
 import { computed } from 'vue'
 import FButton from '@/components/FButton.vue'
 import FTable, { type FTableHeader } from '@/components/FTable.vue'
@@ -70,6 +88,7 @@ defineEmits<{
 const headers = computed<FTableHeader[]>(() => [
   { key: 'actions', label: '', align: 'left', width: '52px' },
   { key: 'name', label: 'Produkt' },
+  { key: 'conditionType', label: 'Warunek', width: '84px', thClass: 'px-3 py-2 text-center', tdClass: 'px-3 py-2 text-center' },
   { key: 'quantity', label: 'Ilość' },
   { key: 'status', label: '', width: '52px', thClass: 'px-3 py-2', tdClass: 'px-3 py-2' },
 ])
