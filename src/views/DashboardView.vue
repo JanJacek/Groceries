@@ -626,11 +626,13 @@ const removeItem = async (itemId: string) => {
 
 const removeItemFromPopup = async () => {
   if (!editingItemId.value) return
-  const itemId = editingItemId.value
-  await removeItem(itemId)
-  if (!itemError.value) {
+  itemError.value = ''
+  try {
+    await shopping.deleteItem(editingItemId.value)
     showItemPopup.value = false
     editingItemId.value = null
+  } catch (error) {
+    itemError.value = error instanceof Error ? error.message : 'Nie udało się usunąć pozycji.'
   }
 }
 

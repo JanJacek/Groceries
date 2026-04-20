@@ -68,10 +68,10 @@ defineEmits<{
 }>()
 
 const headers = computed<FTableHeader[]>(() => [
+  { key: 'actions', label: '', align: 'left', width: '52px' },
   { key: 'name', label: 'Produkt' },
   { key: 'quantity', label: 'Ilość' },
   { key: 'status', label: '', width: '52px', thClass: 'px-3 py-2', tdClass: 'px-3 py-2' },
-  { key: 'actions', label: '', align: 'right', width: '52px' },
 ])
 
 const getItem = (row: unknown) => row as ShoppingItem
