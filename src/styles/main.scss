@@ -1,0 +1,40 @@
+@use './variables';
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 min-h-screen bg-auth text-text font-sans antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgb(255 255 255 / 0.92), transparent 28%),
+      linear-gradient(180deg, rgb(255 250 240 / 0.94), rgb(239 231 214 / 0.82));
+  }
+
+  #app {
+    @apply min-h-screen;
+  }
+
+  a {
+    @apply text-primary no-underline;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    @apply font-sans;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
+  }
+}

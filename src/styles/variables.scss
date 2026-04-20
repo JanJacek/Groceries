@@ -1,0 +1,27 @@
+$color-bg-auth: #f7f3ea;
+$color-bg-dashboard: #efe7d6;
+$color-surface: #fffdf8;
+$color-primary: #365314;
+$color-border: #d6ccb8;
+$color-text: #2f2418;
+$color-text-muted: #6b5c4a;
+$color-error: #b42318;
+$color-success: #2f6b2f;
+
+$font-sans: 'Manrope', 'Segoe UI', sans-serif;
+$font-display: 'Fraunces', 'Georgia', serif;
+
+:root {
+  --color-bg-auth: #{$color-bg-auth};
+  --color-bg-dashboard: #{$color-bg-dashboard};
+  --color-surface: #{$color-surface};
+  --color-primary: #{$color-primary};
+  --color-border: #{$color-border};
+  --color-text: #{$color-text};
+  --color-text-muted: #{$color-text-muted};
+  --color-error: #{$color-error};
+  --color-success: #{$color-success};
+
+  --font-sans: #{$font-sans};
+  --font-display: #{$font-display};
+}
