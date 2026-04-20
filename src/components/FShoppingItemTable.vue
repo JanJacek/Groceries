@@ -47,7 +47,7 @@
       </template>
 
       <template v-else-if="header.key === 'actions'">
-        <div class="flex justify-end gap-2">
+        <div class="flex justify-end">
           <FButton
             type="button"
             size="sm"
@@ -58,16 +58,6 @@
             aria-label="Edytuj produkt"
             @click="$emit('edit', getItem(row).id)"
           />
-          <FButton
-            type="button"
-            size="sm"
-            variant="ghost"
-            bordered
-            icon-only
-            :icon="mdiTrashCanOutline"
-            aria-label="Usuń produkt"
-            @click="$emit('delete', getItem(row).id)"
-          />
         </div>
       </template>
     </template>
@@ -75,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { mdiBasketOutline, mdiCurrencyUsd, mdiPencilOutline, mdiTrashCanOutline } from '@mdi/js'
+import { mdiBasketOutline, mdiCurrencyUsd, mdiPencilOutline } from '@mdi/js'
 import { computed } from 'vue'
 import FButton from '@/components/FButton.vue'
 import FTable, { type FTableHeader } from '@/components/FTable.vue'
@@ -90,7 +80,6 @@ const props = defineProps<{
 defineEmits<{
   (e: 'toggle', id: string, completed: boolean): void
   (e: 'edit', id: string): void
-  (e: 'delete', id: string): void
 }>()
 
 const headers = computed<FTableHeader[]>(() => [
@@ -98,7 +87,7 @@ const headers = computed<FTableHeader[]>(() => [
   { key: 'quantity', label: 'Ilość' },
   { key: 'estimatedPrice', label: 'Cena', align: 'right', numeric: true },
   { key: 'status', label: '', width: '52px', thClass: 'px-3 py-2', tdClass: 'px-3 py-2' },
-  { key: 'actions', label: '', align: 'right', width: '96px' },
+  { key: 'actions', label: '', align: 'right', width: '52px' },
 ])
 
 const getItem = (row: unknown) => row as ShoppingItem

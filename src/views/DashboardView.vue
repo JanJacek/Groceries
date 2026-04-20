@@ -54,18 +54,6 @@
           </FCard>
 
           <FCard custom-class="grid gap-4">
-            <div class="flex flex-wrap items-end justify-between gap-4">
-              <div class="grid gap-2">
-                <label class="grid gap-1 text-sm text-text">
-                  Status
-                  <FSelect v-model="statusFilter" :options="statusOptions" />
-                </label>
-              </div>
-              <p class="m-0 text-sm text-muted">
-                {{ filteredItems.length }} z {{ shopping.items.length }} pozycji
-              </p>
-            </div>
-
             <div v-if="shopping.loadingItems" class="text-sm text-muted">Ładowanie produktów...</div>
             <div
               v-else-if="!shopping.items.length"
@@ -86,7 +74,6 @@
               :compact="settings.compactView"
               @toggle="toggleItem"
               @edit="openEditItem"
-              @delete="removeItem"
             />
           </FCard>
         </template>
@@ -286,6 +273,20 @@
       @close="closeItemPopup"
       @confirm="submitItem"
     >
+      <template #header-actions>
+        <FButton
+          v-if="editingItemId"
+          type="button"
+          size="sm"
+          variant="ghost"
+          bordered
+          icon-only
+          :icon="mdiTrashCanOutline"
+          aria-label="Usuń produkt"
+          @click="removeItemFromPopup"
+        />
+      </template>
+
       <div class="grid gap-4">
         <label class="grid gap-1 text-sm text-text">
           Nazwa
@@ -347,7 +348,6 @@ import FButton from '@/components/FButton.vue'
 import FCard from '@/components/FCard.vue'
 import FMessage from '@/components/FMessage.vue'
 import FPopup from '@/components/FPopup.vue'
-import FSelect from '@/components/FSelect.vue'
 import FShoppingItemTable from '@/components/FShoppingItemTable.vue'
 import FShoppingSidebar from '@/components/FShoppingSidebar.vue'
 import { useContactsStore } from '@/stores/contacts'
@@ -372,7 +372,6 @@ const listError = ref('')
 const itemError = ref('')
 const memberError = ref('')
 const memberSuccess = ref('')
-const statusFilter = ref<'all' | 'open' | 'done'>('all')
 
 const listForm = ref({
   name: '',
@@ -411,21 +410,9 @@ const listColorOptions = [
   { label: 'Charcoal', value: 'charcoal' },
 ]
 
-const statusOptions = [
-  { label: 'Wszystkie', value: 'all' },
-  { label: 'Do kupienia', value: 'open' },
-  { label: 'Kupione', value: 'done' },
-]
-
 const unitOptions = computed(() => settings.availableUnits.map((value) => ({ label: value, value })))
 
-const filteredItems = computed(() =>
-  shopping.items.filter((item) => {
-    if (statusFilter.value === 'open' && item.isCompleted) return false
-    if (statusFilter.value === 'done' && !item.isCompleted) return false
-    return true
-  }),
-)
+const filteredItems = computed(() => shopping.items)
 
 const listColor = computed(() =>
   listColorMap[shopping.selectedList?.colorToken ?? 'sage'] ?? listColorMap.sage,
@@ -673,6 +660,16 @@ const removeItem = async (itemId: string) => {
     await shopping.deleteItem(itemId)
   } catch (error) {
     itemError.value = error instanceof Error ? error.message : 'Nie udało się usunąć pozycji.'
+  }
+}
+
+const removeItemFromPopup = async () => {
+  if (!editingItemId.value) return
+  const itemId = editingItemId.value
+  await removeItem(itemId)
+  if (!itemError.value) {
+    showItemPopup.value = false
+    editingItemId.value = null
   }
 }
 

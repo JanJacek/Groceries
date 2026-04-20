@@ -7,7 +7,10 @@
     @click.self="onClose"
   >
     <section class="w-full max-w-xl rounded-[14px] bg-surface p-6 shadow-card">
-      <h2 class="m-0 text-2xl font-bold text-text">{{ props.title }}</h2>
+      <div class="flex items-start justify-between gap-4">
+        <h2 class="m-0 text-2xl font-bold text-text">{{ props.title }}</h2>
+        <slot name="header-actions" />
+      </div>
 
       <div class="mt-4 text-sm leading-6 text-text">
         <slot />
