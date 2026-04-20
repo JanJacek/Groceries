@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
-import ListsView from '@/views/ListsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import SettingsView from '@/views/SettingsView.vue'
@@ -8,19 +7,19 @@ import ContactsView from '@/views/ContactsView.vue'
 import TermsView from '@/views/TermsView.vue'
 import PrivacyView from '@/views/PrivacyView.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useShoppingStore } from '@/stores/shopping'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      redirect: '/lists',
+      component: DashboardView,
+      meta: { requiresAuth: true },
     },
     {
       path: '/lists',
-      name: 'lists',
-      component: ListsView,
-      meta: { requiresAuth: true },
+      redirect: '/',
     },
     {
       path: '/lists/:listId',
@@ -64,14 +63,23 @@ const router = createRouter({
     },
     {
       path: '/cash',
-      redirect: '/lists',
+      redirect: '/',
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/lists',
+      redirect: '/',
     },
   ],
 })
+
+const resolveDefaultAuthenticatedPath = async () => {
+  const shopping = useShoppingStore()
+  await shopping.loadLists({ silent: true, reloadSelected: false })
+  const targetListId = shopping.selectedListId || shopping.lists[0]?.id
+
+  if (targetListId) return `/lists/${targetListId}`
+  return '/?mode=new-list'
+}
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
@@ -82,7 +90,11 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {
-    return { path: '/lists' }
+    return { path: await resolveDefaultAuthenticatedPath() }
+  }
+
+  if (auth.isAuthenticated && (to.path === '/' || to.path === '/lists')) {
+    return { path: await resolveDefaultAuthenticatedPath() }
   }
 
   return true

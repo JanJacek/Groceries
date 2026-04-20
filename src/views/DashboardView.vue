@@ -2,7 +2,7 @@
   <main class="min-h-[calc(100vh-4rem)] bg-dashboard px-4 py-4 md:px-6 md:py-6">
     <section class="mx-auto grid max-w-6xl gap-4 md:gap-6">
       <div class="grid gap-6">
-        <template v-if="displayedList || isListFormMode || isItemFormMode">
+        <template v-if="displayedList || isListFormMode || isItemFormMode || isListSettingsMode">
           <FCard padding-class="p-0" custom-class="overflow-hidden">
             <div class="relative grid gap-3 border-b border-border bg-surface p-4">
               <FButton
@@ -58,7 +58,81 @@
             </div>
 
             <div class="grid gap-4 p-4">
-              <template v-if="isListFormMode">
+              <template v-if="isListSettingsMode">
+                <div class="grid gap-4">
+                  <div class="grid gap-2">
+                    <FButton
+                      v-if="settingsList?.currentUserRole === 'owner'"
+                      type="button"
+                      variant="ghost"
+                      bordered
+                      custom-class="justify-start"
+                      :icon="mdiAccountPlusOutline"
+                      @click="openContactsPicker"
+                    >
+                      Dodaj znajomego
+                    </FButton>
+                    <FButton
+                      type="button"
+                      variant="ghost"
+                      bordered
+                      custom-class="justify-start"
+                      :icon="mdiPencilOutline"
+                      @click="openEditListFromSettings"
+                    >
+                      Edytuj listę
+                    </FButton>
+                    <FButton
+                      v-if="settingsList?.currentUserRole === 'owner'"
+                      type="button"
+                      variant="ghost"
+                      bordered
+                      custom-class="justify-start"
+                      :icon="mdiTrashCanOutline"
+                      @click="removeListFromSettings"
+                    >
+                      Usuń listę
+                    </FButton>
+                  </div>
+
+                  <FMessage v-if="memberError" variant="error">{{ memberError }}</FMessage>
+                  <FMessage v-if="memberSuccess" variant="success">{{ memberSuccess }}</FMessage>
+
+                  <div v-if="shopping.loadingMembers" class="text-sm text-muted">Ładowanie współpracowników...</div>
+                  <div v-else class="grid gap-3">
+                    <div
+                      v-for="member in shopping.members"
+                      :key="member.userId"
+                      class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border p-4"
+                    >
+                      <div class="flex items-center gap-3">
+                        <FAvatar :text="member.avatarInitials || member.email" />
+                        <div>
+                          <p class="m-0 font-semibold text-text">
+                            {{ member.email }}
+                            <span v-if="member.isCurrentUser" class="text-sm font-normal text-muted">(Ty)</span>
+                          </p>
+                          <p class="mt-1 text-sm text-muted">
+                            {{ member.role === 'owner' ? 'Właściciel listy' : 'Może edytować listę i produkty' }}
+                          </p>
+                        </div>
+                      </div>
+                      <FButton
+                        v-if="shopping.canManageSelectedListMembers && !member.isCurrentUser && member.role !== 'owner'"
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        bordered
+                        @click="removeMember(member.userId)"
+                      >
+                        Usuń
+                      </FButton>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else-if="isListFormMode">
                 <div class="grid gap-4">
                   <label class="grid gap-1 text-sm text-text">
                     Nazwa
@@ -177,7 +251,7 @@
             Wybrana lista nie istnieje albo nie masz do niej dostępu.
           </p>
           <div>
-            <FButton type="button" @click="goToLists">Wróć do wszystkich list</FButton>
+            <FButton type="button" @click="goToLists">Przejdź do listy</FButton>
           </div>
         </FCard>
       </div>
@@ -194,99 +268,6 @@
       <p class="m-0 whitespace-pre-wrap text-sm text-text">
         {{ displayedList?.note || 'Lista nie ma notatki.' }}
       </p>
-    </FPopup>
-
-    <FPopup
-      :open="showListSettingsPopup"
-      title="Opcje listy"
-      confirm-text="Zamknij"
-      cancel-text="Wróć"
-      @close="closeListSettingsPopup"
-      @confirm="closeListSettingsPopup"
-    >
-      <div class="grid gap-4">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p class="m-0 text-lg font-semibold text-text">{{ settingsList?.name }}</p>
-            <p class="mt-1 text-sm text-muted">
-              {{ settingsList?.currentUserRole === 'owner' ? 'Właściciel listy' : 'Współpracownik listy' }}
-            </p>
-          </div>
-          <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
-            {{ settingsList?.currentUserRole === 'owner' ? 'Właściciel' : 'Edytor' }}
-          </span>
-        </div>
-
-        <div class="grid gap-2">
-          <FButton
-            v-if="settingsList?.currentUserRole === 'owner'"
-            type="button"
-            variant="ghost"
-            bordered
-            custom-class="justify-start"
-            :icon="mdiAccountPlusOutline"
-            @click="openContactsPicker"
-          >
-            Dodaj znajomego
-          </FButton>
-          <FButton
-            type="button"
-            variant="ghost"
-            bordered
-            custom-class="justify-start"
-            :icon="mdiPencilOutline"
-            @click="openEditListFromSettings"
-          >
-            Edytuj listę
-          </FButton>
-          <FButton
-            v-if="settingsList?.currentUserRole === 'owner'"
-            type="button"
-            variant="ghost"
-            bordered
-            custom-class="justify-start"
-            :icon="mdiTrashCanOutline"
-            @click="removeListFromSettings"
-          >
-            Usuń listę
-          </FButton>
-        </div>
-
-        <FMessage v-if="memberError" variant="error">{{ memberError }}</FMessage>
-        <FMessage v-if="memberSuccess" variant="success">{{ memberSuccess }}</FMessage>
-
-        <div v-if="shopping.loadingMembers" class="text-sm text-muted">Ładowanie współpracowników...</div>
-        <div v-else class="grid gap-3">
-          <div
-            v-for="member in shopping.members"
-            :key="member.userId"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border p-4"
-          >
-            <div class="flex items-center gap-3">
-              <FAvatar :text="member.avatarInitials || member.email" />
-              <div>
-                <p class="m-0 font-semibold text-text">
-                  {{ member.email }}
-                  <span v-if="member.isCurrentUser" class="text-sm font-normal text-muted">(Ty)</span>
-                </p>
-                <p class="mt-1 text-sm text-muted">
-                  {{ member.role === 'owner' ? 'Właściciel listy' : 'Może edytować listę i produkty' }}
-                </p>
-              </div>
-            </div>
-            <FButton
-              v-if="shopping.canManageSelectedListMembers && !member.isCurrentUser && member.role !== 'owner'"
-              type="button"
-              size="sm"
-              variant="ghost"
-              bordered
-              @click="removeMember(member.userId)"
-            >
-              Usuń
-            </FButton>
-          </div>
-        </div>
-      </div>
     </FPopup>
 
     <FPopup
@@ -372,7 +353,6 @@ const shopping = useShoppingStore()
 const contacts = useContactsStore()
 
 const showListNotePopup = ref(false)
-const showListSettingsPopup = ref(false)
 const showContactsPickerPopup = ref(false)
 const savingList = ref(false)
 const savingItem = ref(false)
@@ -415,14 +395,16 @@ const itemConditionOptions = [
   { label: 'Promotion', value: 'promotion' },
 ]
 
-type EditorMode = 'view' | 'new-list' | 'edit-list' | 'new-item' | 'edit-item'
+type EditorMode = 'view' | 'settings' | 'new-list' | 'edit-list' | 'new-item' | 'edit-item'
 
 const editorMode = ref<EditorMode>('view')
 const filteredItems = computed(() => shopping.items)
+const isListSettingsMode = computed(() => editorMode.value === 'settings')
 const isListFormMode = computed(() => editorMode.value === 'new-list' || editorMode.value === 'edit-list')
 const isItemFormMode = computed(() => editorMode.value === 'new-item' || editorMode.value === 'edit-item')
-const isEditorMode = computed(() => isListFormMode.value || isItemFormMode.value)
+const isEditorMode = computed(() => isListSettingsMode.value || isListFormMode.value || isItemFormMode.value)
 const cardTitle = computed(() => {
+  if (editorMode.value === 'settings') return 'Opcje listy'
   if (editorMode.value === 'new-list') return 'Nowa lista'
   if (editorMode.value === 'edit-list') return 'Edytuj listę'
   if (editorMode.value === 'new-item') return 'Nowy produkt'
@@ -430,6 +412,7 @@ const cardTitle = computed(() => {
   return displayedList.value?.name ?? 'Lista'
 })
 const closeEditorLabel = computed(() => {
+  if (isListSettingsMode.value) return 'Zamknij opcje listy'
   if (isListFormMode.value) return 'Zamknij formularz listy'
   if (isItemFormMode.value) return 'Zamknij formularz produktu'
   return 'Zamknij'
@@ -498,7 +481,12 @@ const syncSelectedList = async () => {
 }
 
 const goToLists = async () => {
-  await router.push('/lists')
+  const targetListId = shopping.selectedListId || shopping.lists[0]?.id
+  if (targetListId) {
+    await router.push(`/lists/${targetListId}`)
+    return
+  }
+  await router.push({ path: '/', query: { mode: 'new-list' } })
 }
 
 const openListSettings = async (listId: string) => {
@@ -507,11 +495,7 @@ const openListSettings = async (listId: string) => {
   memberSuccess.value = ''
   shopping.selectedListId = listId
   await shopping.loadMembers(listId)
-  showListSettingsPopup.value = true
-}
-
-const closeListSettingsPopup = () => {
-  showListSettingsPopup.value = false
+  editorMode.value = 'settings'
 }
 
 const openContactsPicker = async () => {
@@ -593,7 +577,7 @@ const removeList = async () => {
     const removedListId = shopping.selectedList.id
     await shopping.deleteList(removedListId)
     if (route.params.listId === removedListId) {
-      await router.push('/lists')
+      await goToLists()
     }
   } catch (error) {
     listError.value = error instanceof Error ? error.message : 'Nie udało się usunąć listy.'
@@ -639,12 +623,10 @@ const removeMember = async (userId: string) => {
 }
 
 const openEditListFromSettings = () => {
-  closeListSettingsPopup()
   openEditList()
 }
 
 const removeListFromSettings = async () => {
-  closeListSettingsPopup()
   await removeList()
 }
 

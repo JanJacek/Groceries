@@ -3,7 +3,7 @@
     <nav class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
       <div class="flex min-w-0 items-center gap-3 md:gap-4">
         <router-link
-          to="/lists"
+          to="/"
           class="flex shrink-0 items-center gap-3 font-serif text-2xl font-bold tracking-tight text-text"
         >
           <svg class="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -75,7 +75,7 @@ const openCreateList = () => {
       : shopping.lists[0]?.id
 
   if (!currentListId) {
-    void router.push('/lists')
+    void router.push({ path: '/', query: { mode: 'new-list' } })
     return
   }
 
