@@ -1,5 +1,22 @@
 <template>
   <FTable :headers="headers" :rows="rows" row-key="id" :default-td-class="compact ? 'px-3 py-2' : 'px-3 py-3'">
+    <template #header="{ header }">
+      <template v-if="header.key === 'status'">
+        <span class="inline-flex items-center justify-center text-primary" aria-label="Status zakupów">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path :d="mdiBasketOutline" />
+          </svg>
+        </span>
+      </template>
+      <template v-else-if="header.key === 'estimatedPrice'">
+        <span class="inline-flex items-center justify-end text-primary" aria-label="Cena">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path :d="mdiCurrencyUsd" />
+          </svg>
+        </span>
+      </template>
+    </template>
+
     <template #cell="{ row, header }">
       <template v-if="header.key === 'name'">
         <div>
@@ -23,27 +40,38 @@
       </template>
 
       <template v-else-if="header.key === 'status'">
-        <span
-          :class="[
-            'inline-flex rounded-full px-2 py-1 text-xs font-semibold',
-            isCompleted(row) ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary',
-          ]"
-        >
-          {{ isCompleted(row) ? 'Kupione' : 'Do kupienia' }}
-        </span>
+        <label class="inline-flex cursor-pointer items-center justify-center">
+          <input
+            type="checkbox"
+            class="h-4 w-4 appearance-none rounded border border-border bg-surface checked:border-primary checked:bg-primary"
+            :checked="isCompleted(row)"
+            @change="$emit('toggle', getItem(row).id, !isCompleted(row))"
+          />
+        </label>
       </template>
 
       <template v-else-if="header.key === 'actions'">
         <div class="flex justify-end gap-2">
-          <FButton type="button" size="sm" variant="ghost" bordered @click="$emit('toggle', getItem(row).id, !isCompleted(row))">
-            {{ isCompleted(row) ? 'Cofnij' : 'Kupione' }}
-          </FButton>
-          <FButton type="button" size="sm" variant="ghost" bordered @click="$emit('edit', getItem(row).id)">
-            Edytuj
-          </FButton>
-          <FButton type="button" size="sm" variant="ghost" bordered @click="$emit('delete', getItem(row).id)">
-            Usuń
-          </FButton>
+          <FButton
+            type="button"
+            size="sm"
+            variant="ghost"
+            bordered
+            icon-only
+            :icon="mdiPencilOutline"
+            aria-label="Edytuj produkt"
+            @click="$emit('edit', getItem(row).id)"
+          />
+          <FButton
+            type="button"
+            size="sm"
+            variant="ghost"
+            bordered
+            icon-only
+            :icon="mdiTrashCanOutline"
+            aria-label="Usuń produkt"
+            @click="$emit('delete', getItem(row).id)"
+          />
         </div>
       </template>
     </template>
@@ -51,6 +79,7 @@
 </template>
 
 <script setup lang="ts">
+import { mdiBasketOutline, mdiCurrencyUsd, mdiPencilOutline, mdiTrashCanOutline } from '@mdi/js'
 import { computed } from 'vue'
 import FButton from '@/components/FButton.vue'
 import FTable, { type FTableHeader } from '@/components/FTable.vue'
@@ -73,8 +102,8 @@ const headers = computed<FTableHeader[]>(() => [
   { key: 'quantity', label: 'Ilość' },
   { key: 'category', label: 'Kategoria' },
   { key: 'estimatedPrice', label: 'Cena', align: 'right', numeric: true },
-  { key: 'status', label: 'Status' },
-  { key: 'actions', label: '', align: 'right', width: '240px' },
+  { key: 'status', label: '', width: '52px', thClass: 'px-3 py-2', tdClass: 'px-3 py-2' },
+  { key: 'actions', label: '', align: 'right', width: '96px' },
 ])
 
 const getItem = (row: unknown) => row as ShoppingItem

@@ -9,7 +9,9 @@
             :class="getThClass(header)"
             :style="getColStyle(header)"
           >
-            {{ header.label }}
+            <slot name="header" :header="header">
+              {{ header.label }}
+            </slot>
           </th>
         </tr>
       </thead>
