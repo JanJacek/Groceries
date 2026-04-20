@@ -1,94 +1,99 @@
 <template>
-  <main class="min-h-[calc(100vh-4rem)] bg-dashboard px-6 py-6">
-    <section class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <FShoppingSidebar
-        :lists="shopping.lists"
-        :selected-id="shopping.selectedListId"
-        :loading="shopping.loadingLists"
-        @create="openCreateList"
-        @select="selectList"
-        @settings="openListSettings"
-      />
-
+  <main class="min-h-[calc(100vh-4rem)] bg-dashboard px-4 py-4 md:px-6 md:py-6">
+    <section class="mx-auto grid max-w-6xl gap-4 md:gap-6">
       <div class="grid gap-6">
-        <template v-if="shopping.selectedList">
+        <template v-if="displayedList">
           <FCard custom-class="overflow-hidden p-0">
-            <div class="grid gap-4 bg-surface p-4">
-              <div class="flex flex-wrap items-start justify-between gap-4">
-                <div class="min-w-0 flex-1">
-                  <div class="mb-2 flex items-center justify-between gap-3">
-                    <div class="flex min-w-0 items-center gap-3">
-                      <span
-                        class="h-3 w-3 rounded-full"
-                        :style="{ backgroundColor: listColor }"
-                      />
-                      <h1 class="m-0 text-3xl text-text">{{ shopping.selectedList.name }}</h1>
-                      <span
-                        class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
-                        :title="memberCountLabel"
-                      >
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path :d="memberCountIcon" />
-                        </svg>
-                        {{ shopping.members.length }}
-                      </span>
-                    </div>
-                    <FButton
-                      type="button"
-                      variant="ghost"
-                      bordered
-                      icon-only
-                      :icon="mdiCogOutline"
-                      aria-label="Ustawienia listy"
-                      @click="openListSettings(shopping.selectedList.id)"
-                    />
-                  </div>
-                  <div class="mt-3 flex items-center justify-between gap-3">
-                    <p class="m-0 max-w-2xl text-sm text-muted">
-                      {{ shopping.selectedList.note || 'Lista bez notatki. Dodaj opis, aby szybciej rozpoznać cel zakupów.' }}
-                    </p>
-                    <FButton type="button" @click="openCreateItem">Dodaj produkt</FButton>
-                  </div>
+            <div class="relative grid gap-3 border-b border-border bg-surface p-4">
+              <FButton
+                type="button"
+                variant="ghost"
+                bordered
+                icon-only
+                :icon="mdiCogOutline"
+                aria-label="Ustawienia listy"
+                custom-class="absolute right-4 top-4"
+                @click="openListSettings(displayedList.id)"
+              />
+              <div class="min-w-0 pr-12">
+                <div class="flex min-w-0 items-center gap-3">
+                  <h1 class="m-0 text-3xl text-text">{{ displayedList.name }}</h1>
+                  <span
+                    class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
+                    :title="memberCountLabel"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path :d="memberCountIcon" />
+                    </svg>
+                    {{ shopping.members.length }}
+                  </span>
+                </div>
+                <div class="mt-2 flex items-center gap-2">
+                  <FButton
+                    v-if="displayedList.note"
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    bordered
+                    icon-only
+                    :icon="mdiNoteOutline"
+                    aria-label="Pokaż notatkę listy"
+                    @click="showListNotePopup = true"
+                  />
                 </div>
               </div>
             </div>
-          </FCard>
 
-          <FCard custom-class="grid gap-4">
-            <div v-if="shopping.loadingItems" class="text-sm text-muted">Ładowanie produktów...</div>
-            <div
-              v-else-if="!shopping.items.length"
-              class="rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
-            >
-              Ta lista jest pusta. Dodaj pierwszy produkt, żeby zacząć.
+            <div class="grid gap-4 p-4">
+              <div v-if="shopping.loadingItems" class="text-sm text-muted">Ładowanie produktów...</div>
+              <div
+                v-else-if="!shopping.items.length"
+                class="rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
+              >
+                Ta lista jest pusta. Dodaj pierwszy produkt, żeby zacząć.
+              </div>
+              <div
+                v-else-if="!filteredItems.length"
+                class="rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
+              >
+                Brak pozycji dla wybranych filtrów.
+              </div>
+              <FShoppingItemTable
+                v-else
+                :rows="filteredItems"
+                :compact="settings.compactView"
+                @create="openCreateItem"
+                @toggle="toggleItem"
+                @edit="openEditItem"
+              />
             </div>
-            <div
-              v-else-if="!filteredItems.length"
-              class="rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
-            >
-              Brak pozycji dla wybranych filtrów.
-            </div>
-            <FShoppingItemTable
-              v-else
-              :rows="filteredItems"
-              :compact="settings.compactView"
-              @toggle="toggleItem"
-              @edit="openEditItem"
-            />
           </FCard>
         </template>
 
         <FCard v-else custom-class="grid gap-4 p-8 text-center">
-          <h1 class="m-0 text-3xl text-text">Stwórz pierwszą listę zakupów</h1>
+          <h1 class="m-0 text-3xl text-text">Lista nie jest dostępna</h1>
           <p class="m-0 text-sm text-muted">
-            Oddziel listy na codzienne zakupy, większe uzupełnienia i specjalne okazje.
+            Wybrana lista nie istnieje albo nie masz do niej dostępu.
           </p>
           <div>
-            <FButton type="button" @click="openCreateList">Utwórz listę</FButton>
+            <FButton type="button" @click="goToLists">Wróć do wszystkich list</FButton>
           </div>
         </FCard>
       </div>
     </section>
+
+    <FPopup
+      :open="showListNotePopup"
+      title="Notatka listy"
+      confirm-text="Zamknij"
+      cancel-text="Wróć"
+      @close="showListNotePopup = false"
+      @confirm="showListNotePopup = false"
+    >
+      <p class="m-0 whitespace-pre-wrap text-sm text-text">
+        {{ displayedList?.note || 'Lista nie ma notatki.' }}
+      </p>
+    </FPopup>
 
     <FPopup
       :open="showListPopup"
@@ -269,8 +274,10 @@
       :loading="savingItem"
       :title="editingItemId ? 'Edytuj produkt' : 'Nowy produkt'"
       confirm-text="Zapisz"
-      cancel-text="Anuluj"
+      :cancel-text="editingItemId ? 'Usuń' : 'Anuluj'"
+      :cancel-is-close="!editingItemId"
       @close="closeItemPopup"
+      @cancel="removeItemFromPopup"
       @confirm="submitItem"
     >
       <template #header-actions>
@@ -281,9 +288,9 @@
           variant="ghost"
           bordered
           icon-only
-          :icon="mdiTrashCanOutline"
-          aria-label="Usuń produkt"
-          @click="removeItemFromPopup"
+          :icon="mdiClose"
+          aria-label="Zamknij edycję produktu"
+          @click="closeItemPopup"
         />
       </template>
 
@@ -318,11 +325,14 @@ import {
   mdiAccountMultipleOutline,
   mdiAccountOutline,
   mdiAccountPlusOutline,
+  mdiClose,
   mdiCogOutline,
+  mdiNoteOutline,
   mdiPencilOutline,
   mdiTrashCanOutline,
 } from '@mdi/js'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import FAvatar from '@/components/FAvatar.vue'
 import FButton from '@/components/FButton.vue'
 import FCard from '@/components/FCard.vue'
@@ -330,16 +340,18 @@ import FMessage from '@/components/FMessage.vue'
 import FPopup from '@/components/FPopup.vue'
 import FSelect from '@/components/FSelect.vue'
 import FShoppingItemTable from '@/components/FShoppingItemTable.vue'
-import FShoppingSidebar from '@/components/FShoppingSidebar.vue'
 import { useContactsStore } from '@/stores/contacts'
 import { useSettingsStore } from '@/stores/settings'
-import { useShoppingStore } from '@/stores/shopping'
+import { type ShoppingList, useShoppingStore } from '@/stores/shopping'
 
+const route = useRoute()
+const router = useRouter()
 const settings = useSettingsStore()
 const shopping = useShoppingStore()
 const contacts = useContactsStore()
 
 const showListPopup = ref(false)
+const showListNotePopup = ref(false)
 const showListSettingsPopup = ref(false)
 const showContactsPickerPopup = ref(false)
 const showItemPopup = ref(false)
@@ -353,6 +365,7 @@ const listError = ref('')
 const itemError = ref('')
 const memberError = ref('')
 const memberSuccess = ref('')
+const displayedList = ref<ShoppingList | null>(null)
 
 const listForm = ref({
   name: '',
@@ -371,14 +384,6 @@ const itemForm = ref<{
   conditionType: '',
 })
 
-const listColorMap: Record<string, string> = {
-  sage: '#84a98c',
-  tomato: '#d97706',
-  berry: '#be185d',
-  ocean: '#0f766e',
-  charcoal: '#44403c',
-}
-
 const listColorOptions = [
   { label: 'Sage', value: 'sage' },
   { label: 'Tomato', value: 'tomato' },
@@ -393,9 +398,6 @@ const itemConditionOptions = [
 
 const filteredItems = computed(() => shopping.items)
 
-const listColor = computed(() =>
-  listColorMap[shopping.selectedList?.colorToken ?? 'sage'] ?? listColorMap.sage,
-)
 const memberCountIcon = computed(() => {
   const count = shopping.members.length
   if (count <= 1) return mdiAccountOutline
@@ -433,15 +435,41 @@ const resetItemForm = () => {
   }
 }
 
-const selectList = async (id: string) => {
-  await Promise.all([shopping.loadItems(id), shopping.loadMembers(id)])
+const syncSelectedList = async () => {
+  const routeListId = typeof route.params.listId === 'string' ? route.params.listId : null
+
+  shopping.selectedListId = routeListId
+  await shopping.loadLists()
+
+  if (!routeListId) {
+    shopping.selectedListId = null
+    displayedList.value = null
+    await Promise.all([shopping.loadItems(null), shopping.loadMembers(null)])
+    return
+  }
+
+  if (!shopping.lists.some((list) => list.id === routeListId)) {
+    shopping.selectedListId = null
+    displayedList.value = null
+    await Promise.all([shopping.loadItems(null), shopping.loadMembers(null)])
+    return
+  }
+
+  shopping.selectedListId = routeListId
+  await Promise.all([shopping.loadItems(routeListId), shopping.loadMembers(routeListId)])
+  displayedList.value = shopping.selectedList
+}
+
+const goToLists = async () => {
+  await router.push('/lists')
 }
 
 const openListSettings = async (listId: string) => {
   settingsListId.value = listId
   memberError.value = ''
   memberSuccess.value = ''
-  await selectList(listId)
+  shopping.selectedListId = listId
+  await shopping.loadMembers(listId)
   showListSettingsPopup.value = true
 }
 
@@ -512,7 +540,11 @@ const removeList = async () => {
   if (!shopping.selectedList) return
   if (!window.confirm(`Usunąć listę "${shopping.selectedList.name}"?`)) return
   try {
-    await shopping.deleteList(shopping.selectedList.id)
+    const removedListId = shopping.selectedList.id
+    await shopping.deleteList(removedListId)
+    if (route.params.listId === removedListId) {
+      await router.push('/lists')
+    }
   } catch (error) {
     listError.value = error instanceof Error ? error.message : 'Nie udało się usunąć listy.'
   }
@@ -655,10 +687,27 @@ const removeItemFromPopup = async () => {
 }
 
 onMounted(() => {
-  void Promise.allSettled([settings.loadProfile(), shopping.loadLists()]).then(() => {
+  void Promise.allSettled([settings.loadProfile(), syncSelectedList()]).then(() => {
     resetItemForm()
   })
 })
+
+watch(
+  () => shopping.selectedList,
+  (nextList) => {
+    if (nextList) {
+      displayedList.value = nextList
+    }
+  },
+)
+
+watch(
+  () => route.params.listId,
+  () => {
+    displayedList.value = null
+    void syncSelectedList()
+  },
+)
 </script>
 
 <style scoped></style>

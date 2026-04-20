@@ -11,8 +11,31 @@
 
     <div
       v-if="isMenuOpen"
-      class="absolute right-0 top-11 z-50 w-52 rounded-[12px] border border-border bg-surface p-1 shadow-card"
+      class="absolute right-0 top-11 z-50 w-64 rounded-[12px] border border-border bg-surface p-1 shadow-card"
     >
+      <div class="flex items-center justify-between gap-3 rounded-[8px] px-3 py-2">
+        <div class="flex items-center gap-2 text-sm text-text">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path :d="isDarkTheme ? mdiMoonWaningCrescent : mdiWhiteBalanceSunny" />
+          </svg>
+          Motyw
+        </div>
+        <button
+          type="button"
+          class="relative inline-flex h-7 w-12 items-center rounded-full border border-border transition"
+          :class="isDarkTheme ? 'bg-primary/20' : 'bg-primary/10'"
+          :aria-label="isDarkTheme ? 'Przełącz na jasny motyw' : 'Przełącz na ciemny motyw'"
+          @click="toggleTheme"
+        >
+          <span
+            class="absolute h-5 w-5 rounded-full bg-primary transition"
+            :class="isDarkTheme ? 'left-6' : 'left-1'"
+          ></span>
+        </button>
+      </div>
+
+      <div class="mx-2 my-1 h-px bg-border"></div>
+
       <router-link
         to="/contacts"
         class="flex items-center gap-2 rounded-[8px] px-3 py-2 text-sm text-text hover:bg-primary/5"
@@ -50,8 +73,15 @@
 </template>
 
 <script setup lang="ts">
-import { mdiAccountMultipleOutline, mdiCogOutline, mdiLogoutVariant } from '@mdi/js'
+import {
+  mdiAccountMultipleOutline,
+  mdiCogOutline,
+  mdiLogoutVariant,
+  mdiMoonWaningCrescent,
+  mdiWhiteBalanceSunny,
+} from '@mdi/js'
 import FAvatar from '@/components/FAvatar.vue'
+import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -60,6 +90,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const auth = useAuthStore()
 const settings = useSettingsStore()
+const { isDarkTheme, toggleTheme } = useTheme()
 const isMenuOpen = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
 const avatarText = computed(() => settings.avatarInitials || auth.user?.email || '')

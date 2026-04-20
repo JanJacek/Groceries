@@ -1,5 +1,5 @@
 <template>
-  <component :is="as" :class="['w-full rounded-[14px] bg-surface p-6 shadow-card', customClass]">
+  <component :is="as" :class="['w-full rounded-[14px] bg-surface p-4 shadow-card md:p-6', customClass]">
     <slot />
   </component>
 </template>

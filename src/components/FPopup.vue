@@ -22,7 +22,7 @@
           variant="ghost"
           :disabled="props.loading"
           bordered
-          @click="onClose"
+          @click="onCancel"
         >
           {{ props.cancelText }}
         </FButton>
@@ -44,23 +44,35 @@ const props = withDefaults(
     confirmText?: string
     cancelText?: string
     loading?: boolean
+    cancelIsClose?: boolean
   }>(),
   {
     title: 'Uwaga',
     confirmText: 'Potwierdzam',
     cancelText: 'Anuluj',
     loading: false,
+    cancelIsClose: true,
   },
 )
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'cancel'): void
   (e: 'confirm'): void
 }>()
 
 const onClose = () => {
   if (props.loading) return
   emit('close')
+}
+
+const onCancel = () => {
+  if (props.loading) return
+  if (props.cancelIsClose) {
+    emit('close')
+    return
+  }
+  emit('cancel')
 }
 
 const onConfirm = () => {

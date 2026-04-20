@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
+import ListsView from '@/views/ListsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import SettingsView from '@/views/SettingsView.vue'
@@ -13,7 +14,17 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'dashboard',
+      redirect: '/lists',
+    },
+    {
+      path: '/lists',
+      name: 'lists',
+      component: ListsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/lists/:listId',
+      name: 'list-detail',
       component: DashboardView,
       meta: { requiresAuth: true },
     },
@@ -53,11 +64,11 @@ const router = createRouter({
     },
     {
       path: '/cash',
-      redirect: '/',
+      redirect: '/lists',
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/',
+      redirect: '/lists',
     },
   ],
 })
@@ -71,7 +82,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {
-    return { path: '/' }
+    return { path: '/lists' }
   }
 
   return true

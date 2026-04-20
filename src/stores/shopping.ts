@@ -79,6 +79,16 @@ type ShoppingListMemberRow = {
   is_current_user: boolean
 }
 
+type ShoppingListRealtimeRow = {
+  id: string
+  name: string
+  note: string | null
+  color_token: string
+  archived: boolean
+  created_at: string
+  updated_at: string
+}
+
 const mapListRole = (value: ShoppingListRow['shopping_list_members']): ShoppingListRole => {
   if (Array.isArray(value)) return value[0]?.role ?? 'editor'
   return value?.role ?? 'editor'
@@ -136,6 +146,17 @@ export const useShoppingStore = defineStore('shopping', () => {
   )
   const canManageSelectedListMembers = computed(() => selectedList.value?.currentUserRole === 'owner')
   const canEditSelectedList = computed(() => Boolean(selectedList.value))
+  const debugEnabled = import.meta.env.DEV
+
+  const debugItems = (label: string) => {
+    if (!debugEnabled) return
+    console.debug(`[shopping] ${label}`, items.value.map((item) => ({
+      id: item.id,
+      name: item.name,
+      completed: item.isCompleted,
+      sortOrder: item.sortOrder,
+    })))
+  }
 
   const ensureUserId = () => {
     const userId = auth.user?.id
@@ -157,13 +178,16 @@ export const useShoppingStore = defineStore('shopping', () => {
     realtimeChannel = null
   }
 
-  const loadMembers = async (listId = selectedListId.value) => {
+  const loadMembers = async (
+    listId = selectedListId.value,
+    options?: { silent?: boolean },
+  ) => {
     if (!listId) {
       members.value = []
       return
     }
 
-    loadingMembers.value = true
+    if (!options?.silent) loadingMembers.value = true
     try {
       const { data, error } = await supabase.rpc('list_shopping_list_members', {
         p_list_id: listId,
@@ -172,18 +196,21 @@ export const useShoppingStore = defineStore('shopping', () => {
       if (error) throw error
       members.value = ((data ?? []) as ShoppingListMemberRow[]).map(mapMember)
     } finally {
-      loadingMembers.value = false
+      if (!options?.silent) loadingMembers.value = false
     }
   }
 
-  const loadItems = async (listId = selectedListId.value) => {
+  const loadItems = async (
+    listId = selectedListId.value,
+    options?: { silent?: boolean },
+  ) => {
     if (!listId) {
       items.value = []
       return
     }
 
     selectedListId.value = listId
-    loadingItems.value = true
+    if (!options?.silent) loadingItems.value = true
     try {
       const { data, error } = await supabase
         .from('shopping_items')
@@ -191,20 +218,19 @@ export const useShoppingStore = defineStore('shopping', () => {
           'id, list_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
         )
         .eq('list_id', listId)
-        .order('is_completed', { ascending: true })
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true })
 
       if (error) throw error
       items.value = ((data ?? []) as ShoppingItemRow[]).map(mapItem)
     } finally {
-      loadingItems.value = false
+      if (!options?.silent) loadingItems.value = false
     }
   }
 
-  const loadLists = async () => {
+  const loadLists = async (options?: { silent?: boolean; reloadSelected?: boolean }) => {
     const userId = ensureUserId()
-    loadingLists.value = true
+    if (!options?.silent) loadingLists.value = true
 
     try {
       const { data, error } = await supabase
@@ -231,10 +257,15 @@ export const useShoppingStore = defineStore('shopping', () => {
         selectedListId.value = lists.value[0]?.id ?? null
       }
 
-      await Promise.all([loadItems(selectedListId.value), loadMembers(selectedListId.value)])
+      if (options?.reloadSelected !== false) {
+        await Promise.all([
+          loadItems(selectedListId.value, options),
+          loadMembers(selectedListId.value, options),
+        ])
+      }
       ready.value = true
     } finally {
-      loadingLists.value = false
+      if (!options?.silent) loadingLists.value = false
     }
   }
 
@@ -355,6 +386,7 @@ export const useShoppingStore = defineStore('shopping', () => {
   }
 
   const toggleItem = async (itemId: string, completed: boolean) => {
+    debugItems(`before toggle ${itemId} -> ${completed ? 'completed' : 'active'}`)
     const userId = ensureUserId()
     const { data, error } = await supabase
       .from('shopping_items')
@@ -372,6 +404,7 @@ export const useShoppingStore = defineStore('shopping', () => {
     if (error) throw error
     const updated = mapItem(data as ShoppingItemRow)
     items.value = items.value.map((item) => (item.id === itemId ? updated : item))
+    debugItems(`after toggle ${itemId}`)
   }
 
   const deleteItem = async (itemId: string) => {
@@ -411,22 +444,47 @@ export const useShoppingStore = defineStore('shopping', () => {
     await loadMembers(listId)
   }
 
-  const handleListChange = () => {
-    if (!auth.user?.id) return
-    void loadLists()
-  }
-
   const handleItemChange = (
-    payload: RealtimePostgresChangesPayload<{
-      list_id?: string
-    }>,
+    payload: RealtimePostgresChangesPayload<ShoppingItemRow>,
   ) => {
+    if (debugEnabled) {
+      console.debug('[shopping] realtime item change', {
+        eventType: payload.eventType,
+        newId: (payload.new as ShoppingItemRow | null)?.id ?? null,
+        oldId: (payload.old as Partial<ShoppingItemRow> | null)?.id ?? null,
+        selectedListId: selectedListId.value,
+      })
+      debugItems('before realtime item apply')
+    }
+
+    const nextRow = (payload.new ?? null) as ShoppingItemRow | null
+    const previousRow = (payload.old ?? null) as Partial<ShoppingItemRow> | null
     const changedListId =
-      (payload.new as { list_id?: string } | null)?.list_id ??
-      (payload.old as { list_id?: string } | null)?.list_id
+      nextRow?.list_id ??
+      previousRow?.list_id
 
     if (!changedListId || changedListId !== selectedListId.value) return
-    void loadItems(changedListId)
+
+    if (payload.eventType === 'DELETE') {
+      const removedId = previousRow?.id
+      if (!removedId) return
+      items.value = items.value.filter((item) => item.id !== removedId)
+      debugItems(`after realtime delete ${removedId}`)
+      return
+    }
+
+    if (!nextRow) return
+    const nextItem = mapItem(nextRow)
+    const existingIndex = items.value.findIndex((item) => item.id === nextItem.id)
+
+    if (existingIndex === -1) {
+      items.value = [...items.value, nextItem]
+      debugItems(`after realtime insert ${nextItem.id}`)
+      return
+    }
+
+    items.value = items.value.map((item) => (item.id === nextItem.id ? nextItem : item))
+    debugItems(`after realtime update ${nextItem.id}`)
   }
 
   const handleMemberChange = (
@@ -443,13 +501,61 @@ export const useShoppingStore = defineStore('shopping', () => {
       (payload.old as { user_id?: string } | null)?.user_id
 
     if (changedUserId === auth.user?.id) {
-      void loadLists()
+      void loadLists({ silent: true, reloadSelected: false })
       return
     }
 
     if (changedListId && changedListId === selectedListId.value) {
-      void loadMembers(changedListId)
+      void loadMembers(changedListId, { silent: true })
     }
+  }
+
+  const handleListRealtimeChange = (
+    payload: RealtimePostgresChangesPayload<ShoppingListRealtimeRow>,
+  ) => {
+    const nextListRow = (payload.new ?? null) as ShoppingListRealtimeRow | null
+    const previousListRow = (payload.old ?? null) as Partial<ShoppingListRealtimeRow> | null
+    if (debugEnabled) {
+      console.debug('[shopping] realtime list change', {
+        eventType: payload.eventType,
+        newId: nextListRow?.id ?? null,
+        oldId: previousListRow?.id ?? null,
+        selectedListId: selectedListId.value,
+        currentListIds: lists.value.map((list) => list.id),
+      })
+    }
+    const currentListId = selectedListId.value
+
+    if (payload.eventType === 'DELETE') {
+      const removedId = previousListRow?.id
+      if (!removedId) return
+      lists.value = lists.value.filter((list) => list.id !== removedId)
+      if (currentListId === removedId) {
+        selectedListId.value = null
+        items.value = []
+        members.value = []
+      }
+      return
+    }
+
+    const changedId = nextListRow?.id
+    if (!changedId) return
+
+    const currentRole =
+      lists.value.find((list) => list.id === changedId)?.currentUserRole ?? 'editor'
+
+    const nextList = mapList({
+      ...(nextListRow as Omit<ShoppingListRow, 'shopping_list_members'>),
+      shopping_list_members: [{ role: currentRole }],
+    })
+
+    const existingIndex = lists.value.findIndex((list) => list.id === nextList.id)
+    if (existingIndex === -1) {
+      void loadLists({ silent: true, reloadSelected: false })
+      return
+    }
+
+    lists.value = lists.value.map((list) => (list.id === nextList.id ? nextList : list))
   }
 
   const initializeRealtime = (userId: string) => {
@@ -459,7 +565,7 @@ export const useShoppingStore = defineStore('shopping', () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'shopping_lists' },
-        handleListChange,
+        handleListRealtimeChange,
       )
       .on(
         'postgres_changes',

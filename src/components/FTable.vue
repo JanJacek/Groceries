@@ -2,6 +2,9 @@
   <div class="overflow-x-auto">
     <table :class="tableClass">
       <thead>
+        <tr v-if="$slots['head-top']">
+          <slot name="head-top" />
+        </tr>
         <tr :class="headRowClass">
           <th
             v-for="header in headers"

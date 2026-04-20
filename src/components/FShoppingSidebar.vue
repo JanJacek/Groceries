@@ -22,13 +22,7 @@
         @click="$emit('select', list.id)"
       >
         <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <span
-              class="h-3 w-3 rounded-full"
-              :style="{ backgroundColor: colors[list.colorToken] ?? colors.sage }"
-            />
-            <span class="font-semibold text-text">{{ list.name }}</span>
-          </div>
+          <span class="font-semibold text-text">{{ list.name }}</span>
           <FButton
             type="button"
             size="sm"
@@ -68,14 +62,6 @@ defineEmits<{
   (e: 'create'): void
   (e: 'settings', id: string): void
 }>()
-
-const colors: Record<string, string> = {
-  sage: '#84a98c',
-  tomato: '#d97706',
-  berry: '#be185d',
-  ocean: '#0f766e',
-  charcoal: '#44403c',
-}
 </script>
 
 <style scoped></style>
