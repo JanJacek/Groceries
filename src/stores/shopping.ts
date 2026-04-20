@@ -13,7 +13,6 @@ export type ShoppingList = {
   id: string
   name: string
   note: string
-  colorToken: string
   archived: boolean
   createdAt: string
   updatedAt: string
@@ -48,7 +47,6 @@ type ShoppingListRow = {
   id: string
   name: string
   note: string | null
-  color_token: string
   archived: boolean
   created_at: string
   updated_at: string
@@ -83,7 +81,6 @@ type ShoppingListRealtimeRow = {
   id: string
   name: string
   note: string | null
-  color_token: string
   archived: boolean
   created_at: string
   updated_at: string
@@ -98,7 +95,6 @@ const mapList = (row: ShoppingListRow): ShoppingList => ({
   id: row.id,
   name: row.name,
   note: row.note ?? '',
-  colorToken: row.color_token,
   archived: row.archived,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -236,7 +232,7 @@ export const useShoppingStore = defineStore('shopping', () => {
       const { data, error } = await supabase
         .from('shopping_lists')
         .select(
-          'id, name, note, color_token, archived, created_at, updated_at, shopping_list_members!inner(role)',
+          'id, name, note, archived, created_at, updated_at, shopping_list_members!inner(role)',
         )
         .eq('shopping_list_members.user_id', userId)
         .order('archived', { ascending: true })
@@ -272,7 +268,6 @@ export const useShoppingStore = defineStore('shopping', () => {
   const createList = async (payload: {
     name: string
     note: string
-    colorToken: string
     archived?: boolean
   }) => {
     const userId = ensureUserId()
@@ -282,7 +277,6 @@ export const useShoppingStore = defineStore('shopping', () => {
         created_by: userId,
         name: payload.name.trim(),
         note: payload.note.trim() || null,
-        color_token: payload.colorToken,
         archived: payload.archived ?? false,
       })
 
@@ -292,18 +286,17 @@ export const useShoppingStore = defineStore('shopping', () => {
 
   const updateList = async (
     listId: string,
-    payload: { name: string; note: string; colorToken: string; archived: boolean },
+    payload: { name: string; note: string; archived: boolean },
   ) => {
     const { data, error } = await supabase
       .from('shopping_lists')
       .update({
         name: payload.name.trim(),
         note: payload.note.trim() || null,
-        color_token: payload.colorToken,
         archived: payload.archived,
       })
       .eq('id', listId)
-      .select('id, name, note, color_token, archived, created_at, updated_at')
+      .select('id, name, note, archived, created_at, updated_at')
       .single()
 
     if (error) throw error

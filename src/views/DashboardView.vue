@@ -151,10 +151,6 @@
                     ></textarea>
                   </label>
                   <label class="grid gap-1 text-sm text-text">
-                    Kolor
-                    <FSelect v-model="listForm.colorToken" :options="listColorOptions" />
-                  </label>
-                  <label class="flex items-center gap-2 text-sm text-text">
                     <input v-model="listForm.archived" type="checkbox" class="h-4 w-4 rounded border-border" />
                     Oznacz listę jako archiwalną
                   </label>
@@ -369,7 +365,6 @@ const displayedList = ref<ShoppingList | null>(null)
 const listForm = ref({
   name: '',
   note: '',
-  colorToken: 'sage',
   archived: false,
 })
 
@@ -383,13 +378,6 @@ const itemForm = ref<{
   conditionType: '',
 })
 
-const listColorOptions = [
-  { label: 'Sage', value: 'sage' },
-  { label: 'Tomato', value: 'tomato' },
-  { label: 'Berry', value: 'berry' },
-  { label: 'Ocean', value: 'ocean' },
-  { label: 'Charcoal', value: 'charcoal' },
-]
 const itemConditionOptions = [
   { label: 'Brak', value: '' },
   { label: 'Promotion', value: 'promotion' },
@@ -442,7 +430,6 @@ const resetListForm = () => {
   listForm.value = {
     name: '',
     note: '',
-    colorToken: 'sage',
     archived: false,
   }
 }
@@ -524,7 +511,6 @@ const openEditList = () => {
   listForm.value = {
     name: shopping.selectedList.name,
     note: shopping.selectedList.note,
-    colorToken: shopping.selectedList.colorToken,
     archived: shopping.selectedList.archived,
   }
   editorMode.value = 'edit-list'
