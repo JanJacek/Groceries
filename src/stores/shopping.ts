@@ -27,10 +27,7 @@ export type ShoppingItem = {
   updatedBy: string | null
   name: string
   quantity: number
-  unit: string
-  note: string
   isCompleted: boolean
-  estimatedPrice: number | null
   sortOrder: number
   completedAt: string | null
   createdAt: string
@@ -64,10 +61,7 @@ type ShoppingItemRow = {
   updated_by: string | null
   name: string
   quantity: number | string
-  unit: string
-  note: string | null
   is_completed: boolean
-  estimated_price: number | string | null
   sort_order: number
   completed_at: string | null
   created_at: string
@@ -106,10 +100,7 @@ const mapItem = (row: ShoppingItemRow): ShoppingItem => ({
   updatedBy: row.updated_by,
   name: row.name,
   quantity: Number(row.quantity),
-  unit: row.unit,
-  note: row.note ?? '',
   isCompleted: row.is_completed,
-  estimatedPrice: row.estimated_price === null ? null : Number(row.estimated_price),
   sortOrder: row.sort_order,
   completedAt: row.completed_at,
   createdAt: row.created_at,
@@ -194,7 +185,7 @@ export const useShoppingStore = defineStore('shopping', () => {
       const { data, error } = await supabase
         .from('shopping_items')
         .select(
-          'id, list_id, created_by, updated_by, name, quantity, unit, note, is_completed, estimated_price, sort_order, completed_at, created_at, updated_at',
+          'id, list_id, created_by, updated_by, name, quantity, is_completed, sort_order, completed_at, created_at, updated_at',
         )
         .eq('list_id', listId)
         .order('is_completed', { ascending: true })
@@ -309,9 +300,6 @@ export const useShoppingStore = defineStore('shopping', () => {
     listId: string
     name: string
     quantity: number
-    unit: string
-    note: string
-    estimatedPrice: number | null
   }) => {
     const userId = ensureUserId()
     const { data, error } = await supabase
@@ -322,13 +310,10 @@ export const useShoppingStore = defineStore('shopping', () => {
         list_id: payload.listId,
         name: payload.name.trim(),
         quantity: payload.quantity,
-        unit: payload.unit,
-        note: payload.note.trim() || null,
-        estimated_price: payload.estimatedPrice,
         sort_order: items.value.length,
       })
       .select(
-        'id, list_id, created_by, updated_by, name, quantity, unit, note, is_completed, estimated_price, sort_order, completed_at, created_at, updated_at',
+        'id, list_id, created_by, updated_by, name, quantity, is_completed, sort_order, completed_at, created_at, updated_at',
       )
       .single()
 
@@ -341,9 +326,6 @@ export const useShoppingStore = defineStore('shopping', () => {
     payload: {
       name: string
       quantity: number
-      unit: string
-      note: string
-      estimatedPrice: number | null
     },
   ) => {
     const userId = ensureUserId()
@@ -353,13 +335,10 @@ export const useShoppingStore = defineStore('shopping', () => {
         updated_by: userId,
         name: payload.name.trim(),
         quantity: payload.quantity,
-        unit: payload.unit,
-        note: payload.note.trim() || null,
-        estimated_price: payload.estimatedPrice,
       })
       .eq('id', itemId)
       .select(
-        'id, list_id, created_by, updated_by, name, quantity, unit, note, is_completed, estimated_price, sort_order, completed_at, created_at, updated_at',
+        'id, list_id, created_by, updated_by, name, quantity, is_completed, sort_order, completed_at, created_at, updated_at',
       )
       .single()
 
@@ -379,7 +358,7 @@ export const useShoppingStore = defineStore('shopping', () => {
       })
       .eq('id', itemId)
       .select(
-        'id, list_id, created_by, updated_by, name, quantity, unit, note, is_completed, estimated_price, sort_order, completed_at, created_at, updated_at',
+        'id, list_id, created_by, updated_by, name, quantity, is_completed, sort_order, completed_at, created_at, updated_at',
       )
       .single()
 

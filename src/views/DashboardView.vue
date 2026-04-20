@@ -70,7 +70,6 @@
             <FShoppingItemTable
               v-else
               :rows="filteredItems"
-              :currency="settings.preferredCurrency"
               :compact="settings.compactView"
               @toggle="toggleItem"
               @edit="openEditItem"
@@ -292,39 +291,15 @@
           Nazwa
           <input v-model="itemForm.name" type="text" class="rounded-[10px] border border-border px-3 py-2 text-text outline-none" />
         </label>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <label class="grid gap-1 text-sm text-text">
-            Ilość
-            <input
-              v-model.number="itemForm.quantity"
-              type="number"
-              min="0.01"
-              step="0.01"
-              class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-            />
-          </label>
-          <label class="grid gap-1 text-sm text-text">
-            Jednostka
-            <FSelect v-model="itemForm.unit" :options="unitOptions" />
-          </label>
-        </div>
         <label class="grid gap-1 text-sm text-text">
-          Cena szacunkowa
+          Ilość
           <input
-            v-model.number="itemForm.estimatedPrice"
+            v-model.number="itemForm.quantity"
             type="number"
-            min="0"
+            min="0.01"
             step="0.01"
             class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
           />
-        </label>
-        <label class="grid gap-1 text-sm text-text">
-          Notatka
-          <textarea
-            v-model="itemForm.note"
-            rows="3"
-            class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-          ></textarea>
         </label>
         <FMessage v-if="itemError" variant="error">{{ itemError }}</FMessage>
       </div>
@@ -383,15 +358,9 @@ const listForm = ref({
 const itemForm = ref<{
   name: string
   quantity: number
-  unit: string
-  note: string
-  estimatedPrice: number | null
 }>({
   name: '',
   quantity: 1,
-  unit: settings.defaultUnit,
-  note: '',
-  estimatedPrice: null as number | null,
 })
 
 const listColorMap: Record<string, string> = {
@@ -409,8 +378,6 @@ const listColorOptions = [
   { label: 'Ocean', value: 'ocean' },
   { label: 'Charcoal', value: 'charcoal' },
 ]
-
-const unitOptions = computed(() => settings.availableUnits.map((value) => ({ label: value, value })))
 
 const filteredItems = computed(() => shopping.items)
 
@@ -450,9 +417,6 @@ const resetItemForm = () => {
   itemForm.value = {
     name: '',
     quantity: 1,
-    unit: settings.defaultUnit,
-    note: '',
-    estimatedPrice: null,
   }
 }
 
@@ -604,9 +568,6 @@ const openEditItem = (itemId: string) => {
   itemForm.value = {
     name: item.name,
     quantity: item.quantity,
-    unit: item.unit,
-    note: item.note,
-    estimatedPrice: item.estimatedPrice,
   }
   showItemPopup.value = true
 }
