@@ -138,9 +138,20 @@
               <div v-else-if="shopping.loadingItems" class="text-sm text-muted">Ładowanie produktów...</div>
               <div
               v-else-if="!shopping.items.length"
-                class="rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
+                class="grid gap-4 rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
               >
-                Ta lista jest pusta. Dodaj pierwszy produkt, żeby zacząć.
+                <p class="m-0">Ta lista jest pusta. Dodaj pierwszy produkt, żeby zacząć.</p>
+                <div>
+                  <FButton
+                    type="button"
+                    variant="ghost"
+                    bordered
+                    icon-only
+                    :icon="mdiPlus"
+                    aria-label="Dodaj produkt"
+                    @click="openCreateItem"
+                  />
+                </div>
               </div>
               <div
                 v-else-if="!filteredItems.length"
@@ -338,6 +349,7 @@ import {
   mdiCogOutline,
   mdiNoteOutline,
   mdiPencilOutline,
+  mdiPlus,
   mdiTrashCanOutline,
 } from '@mdi/js'
 import { computed, onMounted, ref, watch } from 'vue'
