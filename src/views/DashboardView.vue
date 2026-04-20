@@ -55,14 +55,10 @@
 
           <FCard custom-class="grid gap-4">
             <div class="flex flex-wrap items-end justify-between gap-4">
-              <div class="grid gap-2 sm:grid-cols-2">
+              <div class="grid gap-2">
                 <label class="grid gap-1 text-sm text-text">
                   Status
                   <FSelect v-model="statusFilter" :options="statusOptions" />
-                </label>
-                <label class="grid gap-1 text-sm text-text">
-                  Kategoria
-                  <FSelect v-model="categoryFilter" :options="categoryOptions" />
                 </label>
               </div>
               <p class="m-0 text-sm text-muted">
@@ -311,22 +307,16 @@
             <FSelect v-model="itemForm.unit" :options="unitOptions" />
           </label>
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <label class="grid gap-1 text-sm text-text">
-            Kategoria
-            <input v-model="itemForm.category" type="text" class="rounded-[10px] border border-border px-3 py-2 text-text outline-none" />
-          </label>
-          <label class="grid gap-1 text-sm text-text">
-            Cena szacunkowa
-            <input
-              v-model.number="itemForm.estimatedPrice"
-              type="number"
-              min="0"
-              step="0.01"
-              class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-            />
-          </label>
-        </div>
+        <label class="grid gap-1 text-sm text-text">
+          Cena szacunkowa
+          <input
+            v-model.number="itemForm.estimatedPrice"
+            type="number"
+            min="0"
+            step="0.01"
+            class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
+          />
+        </label>
         <label class="grid gap-1 text-sm text-text">
           Notatka
           <textarea
@@ -383,7 +373,6 @@ const itemError = ref('')
 const memberError = ref('')
 const memberSuccess = ref('')
 const statusFilter = ref<'all' | 'open' | 'done'>('all')
-const categoryFilter = ref('all')
 
 const listForm = ref({
   name: '',
@@ -396,14 +385,12 @@ const itemForm = ref<{
   name: string
   quantity: number
   unit: string
-  category: string
   note: string
   estimatedPrice: number | null
 }>({
   name: '',
   quantity: 1,
   unit: settings.defaultUnit,
-  category: '',
   note: '',
   estimatedPrice: null as number | null,
 })
@@ -432,19 +419,10 @@ const statusOptions = [
 
 const unitOptions = computed(() => settings.availableUnits.map((value) => ({ label: value, value })))
 
-const categoryOptions = computed(() => {
-  const categories = Array.from(
-    new Set(shopping.items.map((item) => item.category.trim()).filter(Boolean)),
-  ).sort((a, b) => a.localeCompare(b))
-
-  return [{ label: 'Wszystkie', value: 'all' }, ...categories.map((value) => ({ label: value, value }))]
-})
-
 const filteredItems = computed(() =>
   shopping.items.filter((item) => {
     if (statusFilter.value === 'open' && item.isCompleted) return false
     if (statusFilter.value === 'done' && !item.isCompleted) return false
-    if (categoryFilter.value !== 'all' && item.category !== categoryFilter.value) return false
     return true
   }),
 )
@@ -486,7 +464,6 @@ const resetItemForm = () => {
     name: '',
     quantity: 1,
     unit: settings.defaultUnit,
-    category: '',
     note: '',
     estimatedPrice: null,
   }
@@ -641,7 +618,6 @@ const openEditItem = (itemId: string) => {
     name: item.name,
     quantity: item.quantity,
     unit: item.unit,
-    category: item.category,
     note: item.note,
     estimatedPrice: item.estimatedPrice,
   }

@@ -31,10 +31,6 @@
         {{ formatQuantity(getItem(row).quantity) }} {{ getItem(row).unit }}
       </template>
 
-      <template v-else-if="header.key === 'category'">
-        {{ getItem(row).category || 'Brak' }}
-      </template>
-
       <template v-else-if="header.key === 'estimatedPrice'">
         {{ getItem(row).estimatedPrice == null ? '—' : formatCurrency(getItem(row).estimatedPrice ?? 0) }}
       </template>
@@ -100,7 +96,6 @@ defineEmits<{
 const headers = computed<FTableHeader[]>(() => [
   { key: 'name', label: 'Produkt' },
   { key: 'quantity', label: 'Ilość' },
-  { key: 'category', label: 'Kategoria' },
   { key: 'estimatedPrice', label: 'Cena', align: 'right', numeric: true },
   { key: 'status', label: '', width: '52px', thClass: 'px-3 py-2', tdClass: 'px-3 py-2' },
   { key: 'actions', label: '', align: 'right', width: '96px' },
