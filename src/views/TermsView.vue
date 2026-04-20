@@ -3,7 +3,7 @@
     <article class="mx-auto max-w-3xl rounded-[20px] bg-surface p-8 shadow-card">
       <h1 class="mt-0 text-3xl text-text">Regulamin</h1>
       <p class="text-muted">
-        `goceries` służy do prowadzenia prywatnych list zakupów. Użytkownik odpowiada za dane, które
+        `groceries` służy do prowadzenia prywatnych list zakupów. Użytkownik odpowiada za dane, które
         wpisuje do aplikacji.
       </p>
       <p class="text-muted">

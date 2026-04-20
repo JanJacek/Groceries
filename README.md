@@ -1,4 +1,4 @@
-# goceries
+# groceries
 
 Shopping list app built on the same technical foundation as `fundApp`.
 

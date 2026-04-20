@@ -7,7 +7,7 @@
           Polityka prywatności
         </router-link>
       </div>
-      <span class="text-xs text-muted">goceries</span>
+      <span class="text-xs text-muted">groceries</span>
     </div>
   </footer>
 </template>
