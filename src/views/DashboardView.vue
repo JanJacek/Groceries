@@ -2,10 +2,22 @@
   <main class="min-h-[calc(100vh-4rem)] bg-dashboard px-4 py-4 md:px-6 md:py-6">
     <section class="mx-auto grid max-w-6xl gap-4 md:gap-6">
       <div class="grid gap-6">
-        <template v-if="displayedList">
-          <FCard custom-class="overflow-hidden p-0">
+        <template v-if="displayedList || isListFormMode || isItemFormMode">
+          <FCard padding-class="p-0" custom-class="overflow-hidden">
             <div class="relative grid gap-3 border-b border-border bg-surface p-4">
               <FButton
+                v-if="isEditorMode"
+                type="button"
+                variant="ghost"
+                bordered
+                icon-only
+                :icon="mdiArrowLeft"
+                :aria-label="closeEditorLabel"
+                custom-class="absolute right-4 top-4"
+                @click="closeEditor"
+              />
+              <FButton
+                v-else-if="displayedList"
                 type="button"
                 variant="ghost"
                 bordered
@@ -17,8 +29,9 @@
               />
               <div class="min-w-0 pr-12">
                 <div class="flex min-w-0 items-center gap-3">
-                  <h1 class="m-0 text-3xl text-text">{{ displayedList.name }}</h1>
+                  <h1 class="m-0 text-3xl text-text">{{ cardTitle }}</h1>
                   <span
+                    v-if="displayedList && !isEditorMode"
                     class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
                     :title="memberCountLabel"
                   >
@@ -28,7 +41,7 @@
                     {{ shopping.members.length }}
                   </span>
                 </div>
-                <div class="mt-2 flex items-center gap-2">
+                <div v-if="displayedList && !isEditorMode" class="mt-2 flex items-center gap-2">
                   <FButton
                     v-if="displayedList.note"
                     type="button"
@@ -45,9 +58,86 @@
             </div>
 
             <div class="grid gap-4 p-4">
-              <div v-if="shopping.loadingItems" class="text-sm text-muted">Ładowanie produktów...</div>
+              <template v-if="isListFormMode">
+                <div class="grid gap-4">
+                  <label class="grid gap-1 text-sm text-text">
+                    Nazwa
+                    <input
+                      v-model="listForm.name"
+                      type="text"
+                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
+                    />
+                  </label>
+                  <label class="grid gap-1 text-sm text-text">
+                    Notatka
+                    <textarea
+                      v-model="listForm.note"
+                      rows="3"
+                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
+                    ></textarea>
+                  </label>
+                  <label class="grid gap-1 text-sm text-text">
+                    Kolor
+                    <FSelect v-model="listForm.colorToken" :options="listColorOptions" />
+                  </label>
+                  <label class="flex items-center gap-2 text-sm text-text">
+                    <input v-model="listForm.archived" type="checkbox" class="h-4 w-4 rounded border-border" />
+                    Oznacz listę jako archiwalną
+                  </label>
+                  <FMessage v-if="listError" variant="error">{{ listError }}</FMessage>
+                  <div class="flex justify-end">
+                    <FButton type="button" :disabled="savingList" @click="submitList">
+                      {{ savingList ? 'Zapisywanie...' : 'Zapisz listę' }}
+                    </FButton>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else-if="isItemFormMode">
+                <div class="grid gap-4">
+                  <label class="grid gap-1 text-sm text-text">
+                    Nazwa
+                    <input
+                      v-model="itemForm.name"
+                      type="text"
+                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
+                    />
+                  </label>
+                  <label class="grid gap-1 text-sm text-text">
+                    Warunek
+                    <FSelect v-model="itemForm.conditionType" :options="itemConditionOptions" />
+                  </label>
+                  <label class="grid gap-1 text-sm text-text">
+                    Ilość
+                    <input
+                      v-model.number="itemForm.quantity"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
+                    />
+                  </label>
+                  <FMessage v-if="itemError" variant="error">{{ itemError }}</FMessage>
+                  <div class="flex justify-end gap-3">
+                    <FButton
+                      type="button"
+                      variant="ghost"
+                      bordered
+                      :disabled="savingItem"
+                      @click="editingItemId ? removeItemFromPopup() : closeEditor()"
+                    >
+                      {{ editingItemId ? 'Usuń' : 'Anuluj' }}
+                    </FButton>
+                    <FButton type="button" :disabled="savingItem" @click="submitItem">
+                      {{ savingItem ? 'Zapisywanie...' : 'Zapisz' }}
+                    </FButton>
+                  </div>
+                </div>
+              </template>
+
+              <div v-else-if="shopping.loadingItems" class="text-sm text-muted">Ładowanie produktów...</div>
               <div
-                v-else-if="!shopping.items.length"
+              v-else-if="!shopping.items.length"
                 class="rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
               >
                 Ta lista jest pusta. Dodaj pierwszy produkt, żeby zacząć.
@@ -93,40 +183,6 @@
       <p class="m-0 whitespace-pre-wrap text-sm text-text">
         {{ displayedList?.note || 'Lista nie ma notatki.' }}
       </p>
-    </FPopup>
-
-    <FPopup
-      :open="showListPopup"
-      :loading="savingList"
-      :title="editingListId ? 'Edytuj listę' : 'Nowa lista'"
-      confirm-text="Zapisz"
-      cancel-text="Anuluj"
-      @close="closeListPopup"
-      @confirm="submitList"
-    >
-      <div class="grid gap-4">
-        <label class="grid gap-1 text-sm text-text">
-          Nazwa
-          <input v-model="listForm.name" type="text" class="rounded-[10px] border border-border px-3 py-2 text-text outline-none" />
-        </label>
-        <label class="grid gap-1 text-sm text-text">
-          Notatka
-          <textarea
-            v-model="listForm.note"
-            rows="3"
-            class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-          ></textarea>
-        </label>
-        <label class="grid gap-1 text-sm text-text">
-          Kolor
-          <FSelect v-model="listForm.colorToken" :options="listColorOptions" />
-        </label>
-        <label class="flex items-center gap-2 text-sm text-text">
-          <input v-model="listForm.archived" type="checkbox" class="h-4 w-4 rounded border-border" />
-          Oznacz listę jako archiwalną
-        </label>
-        <FMessage v-if="listError" variant="error">{{ listError }}</FMessage>
-      </div>
     </FPopup>
 
     <FPopup
@@ -269,53 +325,6 @@
       </div>
     </FPopup>
 
-    <FPopup
-      :open="showItemPopup"
-      :loading="savingItem"
-      :title="editingItemId ? 'Edytuj produkt' : 'Nowy produkt'"
-      confirm-text="Zapisz"
-      :cancel-text="editingItemId ? 'Usuń' : 'Anuluj'"
-      :cancel-is-close="!editingItemId"
-      @close="closeItemPopup"
-      @cancel="removeItemFromPopup"
-      @confirm="submitItem"
-    >
-      <template #header-actions>
-        <FButton
-          v-if="editingItemId"
-          type="button"
-          size="sm"
-          variant="ghost"
-          bordered
-          icon-only
-          :icon="mdiClose"
-          aria-label="Zamknij edycję produktu"
-          @click="closeItemPopup"
-        />
-      </template>
-
-      <div class="grid gap-4">
-        <label class="grid gap-1 text-sm text-text">
-          Nazwa
-          <input v-model="itemForm.name" type="text" class="rounded-[10px] border border-border px-3 py-2 text-text outline-none" />
-        </label>
-        <label class="grid gap-1 text-sm text-text">
-          Warunek
-          <FSelect v-model="itemForm.conditionType" :options="itemConditionOptions" />
-        </label>
-        <label class="grid gap-1 text-sm text-text">
-          Ilość
-          <input
-            v-model.number="itemForm.quantity"
-            type="number"
-            min="0.01"
-            step="0.01"
-            class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-          />
-        </label>
-        <FMessage v-if="itemError" variant="error">{{ itemError }}</FMessage>
-      </div>
-    </FPopup>
   </main>
 </template>
 
@@ -325,7 +334,7 @@ import {
   mdiAccountMultipleOutline,
   mdiAccountOutline,
   mdiAccountPlusOutline,
-  mdiClose,
+  mdiArrowLeft,
   mdiCogOutline,
   mdiNoteOutline,
   mdiPencilOutline,
@@ -350,11 +359,9 @@ const settings = useSettingsStore()
 const shopping = useShoppingStore()
 const contacts = useContactsStore()
 
-const showListPopup = ref(false)
 const showListNotePopup = ref(false)
 const showListSettingsPopup = ref(false)
 const showContactsPickerPopup = ref(false)
-const showItemPopup = ref(false)
 const savingList = ref(false)
 const savingItem = ref(false)
 const addingContactToList = ref(false)
@@ -396,7 +403,25 @@ const itemConditionOptions = [
   { label: 'Promotion', value: 'promotion' },
 ]
 
+type EditorMode = 'view' | 'new-list' | 'edit-list' | 'new-item' | 'edit-item'
+
+const editorMode = ref<EditorMode>('view')
 const filteredItems = computed(() => shopping.items)
+const isListFormMode = computed(() => editorMode.value === 'new-list' || editorMode.value === 'edit-list')
+const isItemFormMode = computed(() => editorMode.value === 'new-item' || editorMode.value === 'edit-item')
+const isEditorMode = computed(() => isListFormMode.value || isItemFormMode.value)
+const cardTitle = computed(() => {
+  if (editorMode.value === 'new-list') return 'Nowa lista'
+  if (editorMode.value === 'edit-list') return 'Edytuj listę'
+  if (editorMode.value === 'new-item') return 'Nowy produkt'
+  if (editorMode.value === 'edit-item') return 'Edytuj produkt'
+  return displayedList.value?.name ?? 'Lista'
+})
+const closeEditorLabel = computed(() => {
+  if (isListFormMode.value) return 'Zamknij formularz listy'
+  if (isItemFormMode.value) return 'Zamknij formularz produktu'
+  return 'Zamknij'
+})
 
 const memberCountIcon = computed(() => {
   const count = shopping.members.length
@@ -493,7 +518,7 @@ const openCreateList = () => {
   editingListId.value = null
   listError.value = ''
   resetListForm()
-  showListPopup.value = true
+  editorMode.value = 'new-list'
 }
 
 const openEditList = () => {
@@ -506,12 +531,21 @@ const openEditList = () => {
     colorToken: shopping.selectedList.colorToken,
     archived: shopping.selectedList.archived,
   }
-  showListPopup.value = true
+  editorMode.value = 'edit-list'
 }
 
-const closeListPopup = () => {
-  if (savingList.value) return
-  showListPopup.value = false
+const closeEditor = async (options?: { force?: boolean }) => {
+  if (!options?.force && (savingList.value || savingItem.value)) return
+  editorMode.value = 'view'
+  editingListId.value = null
+  editingItemId.value = null
+  listError.value = ''
+  itemError.value = ''
+  resetListForm()
+  resetItemForm()
+  if (route.query.mode) {
+    await router.replace({ path: route.path, query: {} })
+  }
 }
 
 const submitList = async () => {
@@ -527,8 +561,12 @@ const submitList = async () => {
       await shopping.updateList(editingListId.value, listForm.value)
     } else {
       await shopping.createList(listForm.value)
+      const newestListId = shopping.lists[0]?.id
+      if (newestListId) {
+        await router.push(`/lists/${newestListId}`)
+      }
     }
-    showListPopup.value = false
+    await closeEditor({ force: true })
   } catch (error) {
     listError.value = error instanceof Error ? error.message : 'Nie udało się zapisać listy.'
   } finally {
@@ -602,7 +640,7 @@ const openCreateItem = () => {
   editingItemId.value = null
   itemError.value = ''
   resetItemForm()
-  showItemPopup.value = true
+  editorMode.value = 'new-item'
 }
 
 const openEditItem = (itemId: string) => {
@@ -615,12 +653,7 @@ const openEditItem = (itemId: string) => {
     quantity: item.quantity,
     conditionType: item.conditionType ?? '',
   }
-  showItemPopup.value = true
-}
-
-const closeItemPopup = () => {
-  if (savingItem.value) return
-  showItemPopup.value = false
+  editorMode.value = 'edit-item'
 }
 
 const submitItem = async () => {
@@ -649,7 +682,7 @@ const submitItem = async () => {
         conditionType: itemForm.value.conditionType || null,
       })
     }
-    showItemPopup.value = false
+    await closeEditor({ force: true })
   } catch (error) {
     itemError.value = error instanceof Error ? error.message : 'Nie udało się zapisać produktu.'
   } finally {
@@ -679,8 +712,7 @@ const removeItemFromPopup = async () => {
   itemError.value = ''
   try {
     await shopping.deleteItem(editingItemId.value)
-    showItemPopup.value = false
-    editingItemId.value = null
+    await closeEditor({ force: true })
   } catch (error) {
     itemError.value = error instanceof Error ? error.message : 'Nie udało się usunąć pozycji.'
   }
@@ -705,8 +737,27 @@ watch(
   () => route.params.listId,
   () => {
     displayedList.value = null
+    editorMode.value = route.query.mode === 'new-list' ? 'new-list' : 'view'
     void syncSelectedList()
   },
+)
+
+watch(
+  () => route.query.mode,
+  (mode) => {
+    if (mode === 'new-list') {
+      editingListId.value = null
+      listError.value = ''
+      resetListForm()
+      editorMode.value = 'new-list'
+      return
+    }
+
+    if (editorMode.value === 'new-list') {
+      editorMode.value = 'view'
+    }
+  },
+  { immediate: true },
 )
 </script>
 

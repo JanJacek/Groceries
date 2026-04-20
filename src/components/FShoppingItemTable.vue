@@ -84,14 +84,16 @@
       </template>
 
       <template v-else-if="header.key === 'status'">
-        <label class="inline-flex cursor-pointer items-center justify-center">
-          <input
-            type="checkbox"
-            class="h-4 w-4 appearance-none rounded border border-border bg-surface checked:border-primary checked:bg-primary"
-            :checked="isCompleted(row)"
-            @change="$emit('toggle', getItem(row).id, !isCompleted(row))"
-          />
-        </label>
+        <div class="flex justify-center">
+          <label class="inline-flex cursor-pointer items-center justify-center">
+            <input
+              type="checkbox"
+              class="h-4 w-4 appearance-none rounded border border-border bg-surface checked:border-primary checked:bg-primary"
+              :checked="isCompleted(row)"
+              @change="$emit('toggle', getItem(row).id, !isCompleted(row))"
+            />
+          </label>
+        </div>
       </template>
 
     </template>
@@ -131,7 +133,7 @@ const headers = computed<FTableHeader[]>(() => [
   { key: 'name', label: 'Produkt' },
   { key: 'conditionType', label: 'Warunek', width: '84px', thClass: 'px-3 py-2 text-center', tdClass: 'px-3 py-2 text-center' },
   { key: 'quantity', label: 'Ilość' },
-  { key: 'status', label: '', width: '52px', thClass: 'px-3 py-2', tdClass: 'px-3 py-2' },
+  { key: 'status', label: '', width: '52px', thClass: 'px-3 py-2 text-center', tdClass: 'px-3 py-2 text-center align-middle' },
 ])
 
 const sortedRows = computed(() => {
