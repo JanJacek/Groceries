@@ -47,26 +47,9 @@
                     aria-label="Ustawienia listy"
                     @click="openListSettings(shopping.selectedList.id)"
                   />
-                  <FButton type="button" variant="ghost" bordered @click="openEditList">Edytuj listę</FButton>
-                  <FButton
-                    v-if="shopping.selectedList.currentUserRole === 'owner'"
-                    type="button"
-                    variant="ghost"
-                    bordered
-                    @click="removeList"
-                  >
-                    Usuń listę
-                  </FButton>
                   <FButton type="button" @click="openCreateItem">Dodaj produkt</FButton>
                 </div>
               </div>
-
-              <FShoppingSummary
-                :total="summary.total"
-                :completed="summary.completed"
-                :remaining="summary.remaining"
-                :estimated-cost="summary.estimatedCost"
-              />
             </div>
           </FCard>
 
@@ -377,7 +360,6 @@ import FPopup from '@/components/FPopup.vue'
 import FSelect from '@/components/FSelect.vue'
 import FShoppingItemTable from '@/components/FShoppingItemTable.vue'
 import FShoppingSidebar from '@/components/FShoppingSidebar.vue'
-import FShoppingSummary from '@/components/FShoppingSummary.vue'
 import { useContactsStore } from '@/stores/contacts'
 import { useSettingsStore } from '@/stores/settings'
 import { useShoppingStore } from '@/stores/shopping'
@@ -466,24 +448,6 @@ const filteredItems = computed(() =>
     return true
   }),
 )
-
-const summary = computed(() => {
-  const total = shopping.items.length
-  const completed = shopping.items.filter((item) => item.isCompleted).length
-  const remaining = total - completed
-  const estimatedCost = shopping.items.reduce((sum, item) => sum + (item.estimatedPrice ?? 0), 0)
-
-  return {
-    total,
-    completed,
-    remaining,
-    estimatedCost: new Intl.NumberFormat('pl-PL', {
-      style: 'currency',
-      currency: settings.preferredCurrency,
-      maximumFractionDigits: 2,
-    }).format(estimatedCost),
-  }
-})
 
 const listColor = computed(() =>
   listColorMap[shopping.selectedList?.colorToken ?? 'sage'] ?? listColorMap.sage,
