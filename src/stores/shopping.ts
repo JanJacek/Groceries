@@ -401,17 +401,22 @@ export const useShoppingStore = defineStore('shopping', () => {
     items.value = items.value.filter((item) => item.id !== itemId)
   }
 
-  const inviteMember = async (email: string) => {
+  const addMemberFromContacts = async (userId: string) => {
     const listId = selectedListId.value
     if (!listId) throw new Error('Najpierw wybierz listę.')
 
-    const { error } = await supabase.rpc('invite_shopping_list_member', {
+    const { error } = await supabase.rpc('add_shopping_list_member', {
       p_list_id: listId,
-      p_email: email.trim(),
+      p_user_id: userId,
     })
 
     if (error) throw error
     await loadMembers(listId)
+  }
+
+  // Backward-compatible alias for hot-reload / stale component references.
+  const inviteMember = async (userId: string) => {
+    await addMemberFromContacts(userId)
   }
 
   const removeMember = async (userId: string) => {
@@ -522,6 +527,7 @@ export const useShoppingStore = defineStore('shopping', () => {
     updateItem,
     toggleItem,
     deleteItem,
+    addMemberFromContacts,
     inviteMember,
     removeMember,
   }

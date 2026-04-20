@@ -3,6 +3,7 @@ import DashboardView from '@/views/DashboardView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import SettingsView from '@/views/SettingsView.vue'
+import ContactsView from '@/views/ContactsView.vue'
 import TermsView from '@/views/TermsView.vue'
 import PrivacyView from '@/views/PrivacyView.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -32,6 +33,12 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: SettingsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/contacts',
+      name: 'contacts',
+      component: ContactsView,
       meta: { requiresAuth: true },
     },
     {

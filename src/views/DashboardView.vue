@@ -7,6 +7,7 @@
         :loading="shopping.loadingLists"
         @create="openCreateList"
         @select="selectList"
+        @settings="openListSettings"
       />
 
       <div class="grid gap-6">
@@ -21,6 +22,15 @@
                       :style="{ backgroundColor: listColor }"
                     />
                     <h1 class="m-0 text-3xl text-text">{{ shopping.selectedList.name }}</h1>
+                    <span
+                      class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
+                      :title="memberCountLabel"
+                    >
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path :d="memberCountIcon" />
+                      </svg>
+                      {{ shopping.members.length }}
+                    </span>
                   </div>
                   <p class="m-0 max-w-2xl text-sm text-muted">
                     {{ shopping.selectedList.note || 'Lista bez notatki. Dodaj opis, aby szybciej rozpoznać cel zakupów.' }}
@@ -28,6 +38,15 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2">
+                  <FButton
+                    type="button"
+                    variant="ghost"
+                    bordered
+                    icon-only
+                    :icon="mdiCogOutline"
+                    aria-label="Ustawienia listy"
+                    @click="openListSettings(shopping.selectedList.id)"
+                  />
                   <FButton type="button" variant="ghost" bordered @click="openEditList">Edytuj listę</FButton>
                   <FButton
                     v-if="shopping.selectedList.currentUserRole === 'owner'"
@@ -48,74 +67,6 @@
                 :remaining="summary.remaining"
                 :estimated-cost="summary.estimatedCost"
               />
-            </div>
-          </FCard>
-
-          <FCard custom-class="grid gap-4">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 class="m-0 text-lg text-text">Udostępnianie listy</h2>
-                <p class="mt-1 text-sm text-muted">
-                  Członkowie tej listy widzą zmiany na żywo i pracują na tych samych danych.
-                </p>
-              </div>
-              <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
-                {{ shopping.selectedList.currentUserRole === 'owner' ? 'Właściciel' : 'Edytor' }}
-              </span>
-            </div>
-
-            <div
-              v-if="shopping.canManageSelectedListMembers"
-              class="flex flex-wrap items-end gap-3 rounded-[14px] border border-border p-4"
-            >
-              <label class="grid min-w-[240px] flex-1 gap-1 text-sm text-text">
-                Zaproś użytkownika po e-mailu
-                <input
-                  v-model="inviteEmail"
-                  type="email"
-                  placeholder="np. anna@example.com"
-                  class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-                />
-              </label>
-              <FButton type="button" :disabled="invitingMember" @click="submitInvite">
-                {{ invitingMember ? 'Zapraszanie...' : 'Dodaj do listy' }}
-              </FButton>
-            </div>
-
-            <FMessage v-if="memberError" variant="error">{{ memberError }}</FMessage>
-            <FMessage v-if="memberSuccess" variant="success">{{ memberSuccess }}</FMessage>
-
-            <div v-if="shopping.loadingMembers" class="text-sm text-muted">Ładowanie członków listy...</div>
-            <div v-else class="grid gap-3">
-              <div
-                v-for="member in shopping.members"
-                :key="member.userId"
-                class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border p-4"
-              >
-                <div class="flex items-center gap-3">
-                  <FAvatar :text="member.avatarInitials || member.email" />
-                  <div>
-                    <p class="m-0 font-semibold text-text">
-                      {{ member.email }}
-                      <span v-if="member.isCurrentUser" class="text-sm font-normal text-muted">(Ty)</span>
-                    </p>
-                    <p class="mt-1 text-sm text-muted">
-                      {{ member.role === 'owner' ? 'Właściciel listy' : 'Może edytować listę i produkty' }}
-                    </p>
-                  </div>
-                </div>
-
-                <FButton
-                  v-if="shopping.canManageSelectedListMembers && !member.isCurrentUser && member.role !== 'owner'"
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  bordered
-                  @click="removeMember(member.userId)"
-                >
-                  Usuń
-                </FButton>
-              </div>
             </div>
           </FCard>
 
@@ -208,6 +159,146 @@
     </FPopup>
 
     <FPopup
+      :open="showListSettingsPopup"
+      title="Opcje listy"
+      confirm-text="Zamknij"
+      cancel-text="Wróć"
+      @close="closeListSettingsPopup"
+      @confirm="closeListSettingsPopup"
+    >
+      <div class="grid gap-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="m-0 text-lg font-semibold text-text">{{ settingsList?.name }}</p>
+            <p class="mt-1 text-sm text-muted">
+              {{ settingsList?.currentUserRole === 'owner' ? 'Właściciel listy' : 'Współpracownik listy' }}
+            </p>
+          </div>
+          <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+            {{ settingsList?.currentUserRole === 'owner' ? 'Właściciel' : 'Edytor' }}
+          </span>
+        </div>
+
+        <div class="grid gap-2">
+          <FButton
+            v-if="settingsList?.currentUserRole === 'owner'"
+            type="button"
+            variant="ghost"
+            bordered
+            custom-class="justify-start"
+            :icon="mdiAccountPlusOutline"
+            @click="openContactsPicker"
+          >
+            Dodaj znajomego
+          </FButton>
+          <FButton
+            type="button"
+            variant="ghost"
+            bordered
+            custom-class="justify-start"
+            :icon="mdiPencilOutline"
+            @click="openEditListFromSettings"
+          >
+            Edytuj listę
+          </FButton>
+          <FButton
+            v-if="settingsList?.currentUserRole === 'owner'"
+            type="button"
+            variant="ghost"
+            bordered
+            custom-class="justify-start"
+            :icon="mdiTrashCanOutline"
+            @click="removeListFromSettings"
+          >
+            Usuń listę
+          </FButton>
+        </div>
+
+        <FMessage v-if="memberError" variant="error">{{ memberError }}</FMessage>
+        <FMessage v-if="memberSuccess" variant="success">{{ memberSuccess }}</FMessage>
+
+        <div v-if="shopping.loadingMembers" class="text-sm text-muted">Ładowanie współpracowników...</div>
+        <div v-else class="grid gap-3">
+          <div
+            v-for="member in shopping.members"
+            :key="member.userId"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border p-4"
+          >
+            <div class="flex items-center gap-3">
+              <FAvatar :text="member.avatarInitials || member.email" />
+              <div>
+                <p class="m-0 font-semibold text-text">
+                  {{ member.email }}
+                  <span v-if="member.isCurrentUser" class="text-sm font-normal text-muted">(Ty)</span>
+                </p>
+                <p class="mt-1 text-sm text-muted">
+                  {{ member.role === 'owner' ? 'Właściciel listy' : 'Może edytować listę i produkty' }}
+                </p>
+              </div>
+            </div>
+            <FButton
+              v-if="shopping.canManageSelectedListMembers && !member.isCurrentUser && member.role !== 'owner'"
+              type="button"
+              size="sm"
+              variant="ghost"
+              bordered
+              @click="removeMember(member.userId)"
+            >
+              Usuń
+            </FButton>
+          </div>
+        </div>
+      </div>
+    </FPopup>
+
+    <FPopup
+      :open="showContactsPickerPopup"
+      :loading="addingContactToList"
+      title="Dodaj znajomego do listy"
+      confirm-text="Zamknij"
+      cancel-text="Wróć"
+      @close="closeContactsPicker"
+      @confirm="closeContactsPicker"
+    >
+      <div class="grid gap-4">
+        <p class="m-0 text-sm text-muted">
+          Wybierz kontakt, którego chcesz szybko dodać do tej listy jako współpracownika.
+        </p>
+
+        <div v-if="contacts.loading" class="text-sm text-muted">Ładowanie kontaktów...</div>
+        <div
+          v-else-if="!contacts.contacts.length"
+          class="rounded-[14px] border border-dashed border-border p-4 text-sm text-muted"
+        >
+          Najpierw dodaj kontakty z menu avatara: `Kontakty`.
+        </div>
+        <div v-else-if="!availableContacts.length" class="rounded-[14px] border border-dashed border-border p-4 text-sm text-muted">
+          Wszyscy Twoi znajomi z kontaktów są już na tej liście.
+        </div>
+        <div v-else class="grid gap-3">
+          <button
+            v-for="contact in availableContacts"
+            :key="contact.userId"
+            type="button"
+            class="flex w-full items-center justify-between gap-3 rounded-[14px] border border-border p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
+            @click="addContactToList(contact.userId)"
+          >
+            <div class="flex items-center gap-3">
+              <FAvatar :text="contact.avatarInitials || contact.email" />
+              <div>
+                <p class="m-0 font-semibold text-text">{{ contact.email }}</p>
+                <p class="mt-1 text-sm text-muted">Dodaj jako współpracownika listy.</p>
+              </div>
+            </div>
+            <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+              +
+            </span>
+          </button>
+        </div>
+      </div>
+    </FPopup>
+
+    <FPopup
       :open="showItemPopup"
       :loading="savingItem"
       :title="editingItemId ? 'Edytuj produkt' : 'Nowy produkt'"
@@ -268,6 +359,15 @@
 </template>
 
 <script setup lang="ts">
+import {
+  mdiAccountGroupOutline,
+  mdiAccountMultipleOutline,
+  mdiAccountOutline,
+  mdiAccountPlusOutline,
+  mdiCogOutline,
+  mdiPencilOutline,
+  mdiTrashCanOutline,
+} from '@mdi/js'
 import { computed, onMounted, ref } from 'vue'
 import FAvatar from '@/components/FAvatar.vue'
 import FButton from '@/components/FButton.vue'
@@ -278,24 +378,28 @@ import FSelect from '@/components/FSelect.vue'
 import FShoppingItemTable from '@/components/FShoppingItemTable.vue'
 import FShoppingSidebar from '@/components/FShoppingSidebar.vue'
 import FShoppingSummary from '@/components/FShoppingSummary.vue'
+import { useContactsStore } from '@/stores/contacts'
 import { useSettingsStore } from '@/stores/settings'
 import { useShoppingStore } from '@/stores/shopping'
 
 const settings = useSettingsStore()
 const shopping = useShoppingStore()
+const contacts = useContactsStore()
 
 const showListPopup = ref(false)
+const showListSettingsPopup = ref(false)
+const showContactsPickerPopup = ref(false)
 const showItemPopup = ref(false)
 const savingList = ref(false)
 const savingItem = ref(false)
-const invitingMember = ref(false)
+const addingContactToList = ref(false)
 const editingListId = ref<string | null>(null)
 const editingItemId = ref<string | null>(null)
+const settingsListId = ref<string | null>(null)
 const listError = ref('')
 const itemError = ref('')
 const memberError = ref('')
 const memberSuccess = ref('')
-const inviteEmail = ref('')
 const statusFilter = ref<'all' | 'open' | 'done'>('all')
 const categoryFilter = ref('all')
 
@@ -384,6 +488,25 @@ const summary = computed(() => {
 const listColor = computed(() =>
   listColorMap[shopping.selectedList?.colorToken ?? 'sage'] ?? listColorMap.sage,
 )
+const memberCountIcon = computed(() => {
+  const count = shopping.members.length
+  if (count <= 1) return mdiAccountOutline
+  if (count === 2) return mdiAccountMultipleOutline
+  return mdiAccountGroupOutline
+})
+const memberCountLabel = computed(() => {
+  const count = shopping.members.length
+  if (count <= 1) return '1 użytkownik'
+  if (count === 2) return '2 użytkowników'
+  return `${count} użytkowników`
+})
+const settingsList = computed(
+  () => shopping.lists.find((list) => list.id === settingsListId.value) ?? null,
+)
+const availableContacts = computed(() => {
+  const memberIds = new Set(shopping.members.map((member) => member.userId))
+  return contacts.contacts.filter((contact) => !memberIds.has(contact.userId))
+})
 
 const resetListForm = () => {
   listForm.value = {
@@ -407,6 +530,30 @@ const resetItemForm = () => {
 
 const selectList = async (id: string) => {
   await Promise.all([shopping.loadItems(id), shopping.loadMembers(id)])
+}
+
+const openListSettings = async (listId: string) => {
+  settingsListId.value = listId
+  memberError.value = ''
+  memberSuccess.value = ''
+  await selectList(listId)
+  showListSettingsPopup.value = true
+}
+
+const closeListSettingsPopup = () => {
+  showListSettingsPopup.value = false
+}
+
+const openContactsPicker = async () => {
+  memberError.value = ''
+  memberSuccess.value = ''
+  await contacts.loadContacts()
+  showContactsPickerPopup.value = true
+}
+
+const closeContactsPicker = () => {
+  if (addingContactToList.value) return
+  showContactsPickerPopup.value = false
 }
 
 const openCreateList = () => {
@@ -466,24 +613,30 @@ const removeList = async () => {
   }
 }
 
-const submitInvite = async () => {
-  if (!inviteEmail.value.trim()) {
-    memberError.value = 'Podaj adres e-mail użytkownika.'
-    memberSuccess.value = ''
-    return
-  }
-
+const addContactToList = async (userId: string) => {
   memberError.value = ''
   memberSuccess.value = ''
-  invitingMember.value = true
+  addingContactToList.value = true
   try {
-    await shopping.inviteMember(inviteEmail.value)
+    const storeWithActions = shopping as typeof shopping & {
+      addMemberFromContacts?: (id: string) => Promise<void>
+      inviteMember?: (id: string) => Promise<void>
+    }
+
+    if (typeof storeWithActions.addMemberFromContacts === 'function') {
+      await storeWithActions.addMemberFromContacts(userId)
+    } else if (typeof storeWithActions.inviteMember === 'function') {
+      await storeWithActions.inviteMember(userId)
+    } else {
+      throw new Error('Store nie ma akcji dodawania współpracownika. Odśwież aplikację.')
+    }
+
     memberSuccess.value = 'Użytkownik został dodany do listy.'
-    inviteEmail.value = ''
+    showContactsPickerPopup.value = false
   } catch (error) {
     memberError.value = error instanceof Error ? error.message : 'Nie udało się dodać użytkownika do listy.'
   } finally {
-    invitingMember.value = false
+    addingContactToList.value = false
   }
 }
 
@@ -496,6 +649,16 @@ const removeMember = async (userId: string) => {
   } catch (error) {
     memberError.value = error instanceof Error ? error.message : 'Nie udało się usunąć użytkownika z listy.'
   }
+}
+
+const openEditListFromSettings = () => {
+  closeListSettingsPopup()
+  openEditList()
+}
+
+const removeListFromSettings = async () => {
+  closeListSettingsPopup()
+  await removeList()
 }
 
 const openCreateItem = () => {

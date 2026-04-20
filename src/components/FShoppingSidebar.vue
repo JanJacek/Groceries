@@ -22,10 +22,22 @@
         @click="$emit('select', list.id)"
       >
         <div class="flex items-center justify-between gap-3">
-          <span class="font-semibold text-text">{{ list.name }}</span>
-          <span
-            class="h-3 w-3 rounded-full"
-            :style="{ backgroundColor: colors[list.colorToken] ?? colors.sage }"
+          <div class="flex items-center gap-3">
+            <span
+              class="h-3 w-3 rounded-full"
+              :style="{ backgroundColor: colors[list.colorToken] ?? colors.sage }"
+            />
+            <span class="font-semibold text-text">{{ list.name }}</span>
+          </div>
+          <FButton
+            type="button"
+            size="sm"
+            variant="ghost"
+            bordered
+            icon-only
+            :icon="mdiCogOutline"
+            aria-label="Ustawienia listy"
+            @click.stop="$emit('settings', list.id)"
           />
         </div>
         <p class="mt-2 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -41,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { mdiCogOutline } from '@mdi/js'
 import FButton from '@/components/FButton.vue'
 import type { ShoppingList } from '@/stores/shopping'
 
@@ -53,6 +66,7 @@ defineProps<{
 defineEmits<{
   (e: 'select', id: string): void
   (e: 'create'): void
+  (e: 'settings', id: string): void
 }>()
 
 const colors: Record<string, string> = {
