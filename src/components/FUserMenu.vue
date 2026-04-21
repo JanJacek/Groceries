@@ -11,7 +11,7 @@
 
     <div
       v-if="isMenuOpen"
-      class="absolute right-0 top-11 z-50 w-64 rounded-[12px] border border-border bg-surface p-1 shadow-card"
+      class="absolute right-0 top-11 z-[80] w-64 rounded-[12px] border border-border bg-surface p-1 shadow-card"
     >
       <div class="flex items-center justify-between gap-3 rounded-[8px] px-3 py-2">
         <div class="flex items-center gap-2 text-sm text-text">

@@ -1,5 +1,5 @@
 <template>
-  <header class="border-b border-border bg-surface/90 backdrop-blur-sm">
+  <header class="relative z-40 border-b border-border bg-surface/90 backdrop-blur-sm">
     <nav class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
       <div class="flex min-w-0 items-center gap-3 md:gap-4">
         <router-link

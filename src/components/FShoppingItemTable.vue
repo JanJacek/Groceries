@@ -7,28 +7,6 @@
     head-row-class="border-b border-border text-left text-muted"
     body-row-class="border-b border-border"
   >
-    <template #head-top>
-      <th
-        v-for="header in headers"
-        :key="`top-${header.key}`"
-        :class="header.thClass || 'px-3 py-2 font-semibold'"
-        :style="header.width ? { width: header.width } : undefined"
-      >
-        <div v-if="header.key === 'status'" class="flex justify-center">
-          <button
-            type="button"
-            class="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface text-text transition hover:bg-primary/10 hover:text-primary"
-            aria-label="Dodaj produkt"
-            @click="$emit('create')"
-          >
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path :d="mdiPlus" />
-            </svg>
-          </button>
-        </div>
-      </th>
-    </template>
-
     <template #header="{ header }">
       <button
         type="button"
@@ -88,7 +66,7 @@
           <label class="inline-flex cursor-pointer items-center justify-center">
             <input
               type="checkbox"
-              class="h-4 w-4 appearance-none rounded border border-border bg-surface checked:border-primary checked:bg-primary"
+              class="h-4 w-4 appearance-none rounded border border-primary bg-surface checked:border-primary checked:bg-primary"
               :checked="isCompleted(row)"
               @change="$emit('toggle', getItem(row).id, !isCompleted(row))"
             />
@@ -104,7 +82,6 @@
 import {
   mdiBasketOutline,
   mdiBrightnessPercent,
-  mdiPlus,
 } from '@mdi/js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import FTable, { type FTableHeader } from '@/components/FTable.vue'
@@ -118,7 +95,6 @@ const props = defineProps<{
 defineEmits<{
   (e: 'toggle', id: string, completed: boolean): void
   (e: 'edit', id: string): void
-  (e: 'create'): void
 }>()
 
 type SortKey = 'name' | 'conditionType' | 'quantity' | 'status'

@@ -22,14 +22,22 @@
                 variant="ghost"
                 bordered
                 icon-only
-                :icon="mdiCogOutline"
-                aria-label="Ustawienia listy"
+                :icon="mdiPlus"
+                aria-label="Dodaj produkt"
                 custom-class="absolute right-4 top-4"
-                @click="openListSettings(displayedList.id)"
+                @click="openCreateItem"
               />
               <div class="min-w-0 pr-12">
                 <div class="flex min-w-0 items-center gap-3">
-                  <h1 class="m-0 text-3xl text-text">{{ cardTitle }}</h1>
+                  <button
+                    v-if="displayedList && !isEditorMode"
+                    type="button"
+                    class="m-0 min-w-0 bg-transparent p-0 text-left text-3xl text-text transition hover:text-primary"
+                    @click="openEditList"
+                  >
+                    {{ cardTitle }}
+                  </button>
+                  <h1 v-else class="m-0 text-3xl text-text">{{ cardTitle }}</h1>
                   <span
                     v-if="displayedList && !isEditorMode"
                     class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
@@ -57,12 +65,12 @@
               </div>
             </div>
 
-            <div class="grid gap-4 p-4">
+            <div :class="isEditorMode ? 'grid gap-4 p-4' : 'grid gap-0 p-0'">
               <template v-if="isListSettingsMode">
                 <div class="grid gap-4">
                   <div class="grid gap-2">
                     <FButton
-                      v-if="settingsList?.currentUserRole === 'owner'"
+                      v-if="canManageListMembers"
                       type="button"
                       variant="ghost"
                       bordered
@@ -73,17 +81,7 @@
                       Dodaj znajomego
                     </FButton>
                     <FButton
-                      type="button"
-                      variant="ghost"
-                      bordered
-                      custom-class="justify-start"
-                      :icon="mdiPencilOutline"
-                      @click="openEditListFromSettings"
-                    >
-                      Edytuj listę
-                    </FButton>
-                    <FButton
-                      v-if="settingsList?.currentUserRole === 'owner'"
+                      v-if="canManageListMembers"
                       type="button"
                       variant="ghost"
                       bordered
@@ -155,6 +153,65 @@
                     Oznacz listę jako archiwalną
                   </label>
                   <FMessage v-if="listError" variant="error">{{ listError }}</FMessage>
+                  <div v-if="editingListId" class="grid gap-2">
+                    <FButton
+                      v-if="canManageListMembers"
+                      type="button"
+                      variant="ghost"
+                      bordered
+                      custom-class="justify-start"
+                      :icon="mdiAccountPlusOutline"
+                      @click="openContactsPicker"
+                    >
+                      Dodaj znajomego
+                    </FButton>
+                    <FButton
+                      v-if="canManageListMembers"
+                      type="button"
+                      variant="ghost"
+                      bordered
+                      custom-class="justify-start"
+                      :icon="mdiTrashCanOutline"
+                      @click="removeListFromSettings"
+                    >
+                      Usuń listę
+                    </FButton>
+                  </div>
+                  <FMessage v-if="editingListId && memberError" variant="error">{{ memberError }}</FMessage>
+                  <FMessage v-if="editingListId && memberSuccess" variant="success">{{ memberSuccess }}</FMessage>
+                  <div v-if="editingListId && shopping.loadingMembers" class="text-sm text-muted">
+                    Ładowanie współpracowników...
+                  </div>
+                  <div v-else-if="editingListId" class="grid gap-3">
+                    <div
+                      v-for="member in shopping.members"
+                      :key="member.userId"
+                      class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border p-4"
+                    >
+                      <div class="flex items-center gap-3">
+                        <FAvatar :text="member.avatarInitials || member.email" />
+                        <div>
+                          <p class="m-0 font-semibold text-text">
+                            {{ member.email }}
+                            <span v-if="member.isCurrentUser" class="text-sm font-normal text-muted">(Ty)</span>
+                          </p>
+                          <p class="mt-1 text-sm text-muted">
+                            {{ member.role === 'owner' ? 'Właściciel listy' : 'Może edytować listę i produkty' }}
+                          </p>
+                        </div>
+                      </div>
+                      <FButton
+                        v-if="shopping.canManageSelectedListMembers && !member.isCurrentUser && member.role !== 'owner'"
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        bordered
+                        @click="removeMember(member.userId)"
+                      >
+                        Usuń
+                      </FButton>
+                    </div>
+                  </div>
                   <div class="flex justify-end">
                     <FButton type="button" :disabled="savingList" @click="submitList">
                       {{ savingList ? 'Zapisywanie...' : 'Zapisz listę' }}
@@ -229,14 +286,7 @@
               >
                 Brak pozycji dla wybranych filtrów.
               </div>
-              <FShoppingItemTable
-                v-else
-                :rows="filteredItems"
-                :compact="settings.compactView"
-                @create="openCreateItem"
-                @toggle="toggleItem"
-                @edit="openEditItem"
-              />
+              <FShoppingItemTable v-else :rows="filteredItems" :compact="settings.compactView" @toggle="toggleItem" @edit="openEditItem" />
             </div>
           </FCard>
         </template>
@@ -323,9 +373,7 @@ import {
   mdiAccountOutline,
   mdiAccountPlusOutline,
   mdiArrowLeft,
-  mdiCogOutline,
   mdiNoteOutline,
-  mdiPencilOutline,
   mdiPlus,
   mdiTrashCanOutline,
 } from '@mdi/js'
@@ -418,6 +466,12 @@ const memberCountLabel = computed(() => {
   if (count === 2) return '2 użytkowników'
   return `${count} użytkowników`
 })
+const canManageListMembers = computed(
+  () =>
+    displayedList.value?.currentUserRole === 'owner' ||
+    shopping.selectedList?.currentUserRole === 'owner' ||
+    settingsList.value?.currentUserRole === 'owner',
+)
 const settingsList = computed(
   () => shopping.lists.find((list) => list.id === settingsListId.value) ?? null,
 )
@@ -606,10 +660,6 @@ const removeMember = async (userId: string) => {
   } catch (error) {
     memberError.value = error instanceof Error ? error.message : 'Nie udało się usunąć użytkownika z listy.'
   }
-}
-
-const openEditListFromSettings = () => {
-  openEditList()
 }
 
 const removeListFromSettings = async () => {
