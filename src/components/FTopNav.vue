@@ -18,19 +18,16 @@
         </router-link>
 
         <div class="flex min-w-0 items-center gap-2">
-          <select
-            :value="activeListId"
-            class="h-10 min-w-[112px] max-w-[160px] rounded-[10px] border border-border bg-surface px-3 py-2 text-sm text-text outline-none sm:min-w-[160px] sm:max-w-[220px] md:min-w-[240px] md:max-w-[280px]"
+          <FSelect
+            :model-value="activeListId"
+            :options="listOptions"
             aria-label="Wybierz listę"
-            @change="onSelectList"
-          >
-            <option value="" disabled>
-              {{ shopping.lists.length ? 'Wybierz listę' : 'Brak list' }}
-            </option>
-            <option v-for="list in shopping.lists" :key="list.id" :value="list.id">
-              {{ list.name }}
-            </option>
-          </select>
+            placeholder="Brak list"
+            wrapper-class="min-w-[112px] max-w-[160px] sm:min-w-[160px] sm:max-w-[220px] md:min-w-[240px] md:max-w-[280px]"
+            trigger-class="h-10 px-3 py-2"
+            menu-class="max-h-80 overflow-y-auto"
+            @update:model-value="onSelectList"
+          />
 
           <FButton
             type="button"
@@ -55,6 +52,7 @@ import { mdiBasketOutline, mdiPlus } from '@mdi/js'
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FButton from '@/components/FButton.vue'
+import FSelect from '@/components/FSelect.vue'
 import FUserMenu from '@/components/FUserMenu.vue'
 import { useShoppingStore } from '@/stores/shopping'
 
@@ -68,10 +66,16 @@ const activeListId = computed(() => {
   return shopping.lists[0]?.id ?? ''
 })
 
-const onSelectList = async (event: Event) => {
-  const target = event.target as HTMLSelectElement
-  if (!target.value) return
-  await router.push(`/lists/${target.value}`)
+const listOptions = computed(() =>
+  shopping.lists.map((list) => ({
+    label: list.name,
+    value: list.id,
+  })),
+)
+
+const onSelectList = async (value: string) => {
+  if (!value) return
+  await router.push(`/lists/${value}`)
 }
 
 const openCreateList = () => {
