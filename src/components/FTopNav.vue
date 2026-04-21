@@ -4,12 +4,17 @@
       <div class="flex min-w-0 items-center gap-3 md:gap-4">
         <router-link
           to="/"
-          class="flex shrink-0 items-center gap-3 font-serif text-2xl font-bold tracking-tight text-text"
+          class="flex shrink-0 items-center gap-3 font-serif text-2xl font-semibold tracking-tight text-text"
         >
-          <svg class="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <svg
+            class="h-6 w-6 text-primary"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
             <path :d="mdiBasketOutline" />
           </svg>
-          <span class="hidden sm:inline">groceries</span>
+          <span class="hidden sm:inline">Groceries</span>
         </router-link>
 
         <div class="flex min-w-0 items-center gap-2">
@@ -19,7 +24,9 @@
             aria-label="Wybierz listę"
             @change="onSelectList"
           >
-            <option value="" disabled>{{ shopping.lists.length ? 'Wybierz listę' : 'Brak list' }}</option>
+            <option value="" disabled>
+              {{ shopping.lists.length ? 'Wybierz listę' : 'Brak list' }}
+            </option>
             <option v-for="list in shopping.lists" :key="list.id" :value="list.id">
               {{ list.name }}
             </option>
@@ -41,7 +48,6 @@
       </div>
     </nav>
   </header>
-
 </template>
 
 <script setup lang="ts">
@@ -70,9 +76,7 @@ const onSelectList = async (event: Event) => {
 
 const openCreateList = () => {
   const currentListId =
-    typeof route.params.listId === 'string'
-      ? route.params.listId
-      : shopping.lists[0]?.id
+    typeof route.params.listId === 'string' ? route.params.listId : shopping.lists[0]?.id
 
   if (!currentListId) {
     void router.push({ path: '/', query: { mode: 'new-list' } })
