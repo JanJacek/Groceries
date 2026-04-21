@@ -6,7 +6,9 @@
       @click="toggleMenu"
     >
       <span class="hidden sm:inline">{{ auth.user?.email }}</span>
-      <FAvatar :text="avatarText" />
+      <span :class="hasNotifications ? 'notification-pulse rounded-full border border-primary/50 p-[1px]' : ''">
+        <FAvatar :text="avatarText" />
+      </span>
     </button>
 
     <div
@@ -38,7 +40,10 @@
 
       <router-link
         to="/contacts"
-        class="flex items-center gap-2 rounded-[8px] px-3 py-2 text-sm text-text hover:bg-primary/5"
+        :class="[
+          'flex items-center gap-2 rounded-[8px] px-3 py-2 text-sm text-text hover:bg-primary/5',
+          hasNotifications ? 'notification-pulse' : '',
+        ]"
         @click="closeMenu"
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -83,17 +88,24 @@ import {
 import FAvatar from '@/components/FAvatar.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
+import { useContactsStore } from '@/stores/contacts'
 import { useSettingsStore } from '@/stores/settings'
+import { useShoppingStore } from '@/stores/shopping'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const auth = useAuthStore()
+const contacts = useContactsStore()
 const settings = useSettingsStore()
+const shopping = useShoppingStore()
 const { isDarkTheme, toggleTheme } = useTheme()
 const isMenuOpen = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
 const avatarText = computed(() => settings.avatarInitials || auth.user?.email || '')
+const hasNotifications = computed(
+  () => contacts.hasPendingInvitations || shopping.hasPendingListInvitations,
+)
 
 const closeMenu = () => {
   isMenuOpen.value = false
@@ -118,6 +130,8 @@ const logout = async () => {
 onMounted(() => {
   window.addEventListener('click', onWindowClick)
   void settings.loadProfile()
+  void contacts.loadContacts().catch(() => {})
+  void shopping.loadLists({ silent: true, reloadSelected: false }).catch(() => {})
 })
 
 onBeforeUnmount(() => {

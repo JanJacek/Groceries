@@ -30,7 +30,7 @@
         class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-text transition hover:bg-primary/5"
         @click="selectOption(option.value)"
       >
-        <span class="min-w-0 truncate">{{ option.label }}</span>
+        <span class="min-w-0 truncate" :class="option.pending ? 'notification-pulse' : ''">{{ option.label }}</span>
         <svg
           v-if="option.value === modelValue"
           class="mr-1 h-4 w-4 shrink-0 text-primary"
@@ -53,6 +53,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 type SelectOption = {
   label: string
   value: string
+  pending?: boolean
 }
 
 const props = withDefaults(

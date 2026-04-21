@@ -24,7 +24,7 @@
             aria-label="Wybierz listę"
             placeholder="Brak list"
             wrapper-class="min-w-[112px] max-w-[160px] sm:min-w-[160px] sm:max-w-[220px] md:min-w-[240px] md:max-w-[280px]"
-            trigger-class="h-10 px-3 py-2"
+            :trigger-class="selectTriggerClass"
             menu-class="max-h-80 overflow-y-auto"
             @update:model-value="onSelectList"
           />
@@ -45,37 +45,105 @@
       </div>
     </nav>
   </header>
+
+  <FPopup
+    :open="Boolean(pendingListForReview)"
+    title="Zaproszenie do listy"
+    confirm-text="Akceptuj"
+    cancel-text="Odrzuć"
+    :loading="respondingToInvitation"
+    :cancel-is-close="false"
+    @close="closePendingInvitationPopup"
+    @cancel="rejectPendingInvitation"
+    @confirm="acceptPendingInvitation"
+  >
+    <p class="m-0 text-sm text-text">
+      Otrzymano zaproszenie do listy
+      <strong>{{ pendingListForReview?.name }}</strong>.
+      Zanim wejdziesz do tej listy, zaakceptuj lub odrzuć zaproszenie.
+    </p>
+  </FPopup>
 </template>
 
 <script setup lang="ts">
 import { mdiBasketOutline, mdiPlus } from '@mdi/js'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FButton from '@/components/FButton.vue'
+import FPopup from '@/components/FPopup.vue'
 import FSelect from '@/components/FSelect.vue'
 import FUserMenu from '@/components/FUserMenu.vue'
-import { useShoppingStore } from '@/stores/shopping'
+import { type ShoppingList, useShoppingStore } from '@/stores/shopping'
 
 const route = useRoute()
 const router = useRouter()
 const shopping = useShoppingStore()
+const respondingToInvitation = ref(false)
+const pendingListForReview = ref<ShoppingList | null>(null)
 
 const activeListId = computed(() => {
   if (typeof route.params.listId === 'string') return route.params.listId
-  if (shopping.selectedListId) return shopping.selectedListId
-  return shopping.lists[0]?.id ?? ''
+  if (shopping.selectedListId && shopping.activeLists.some((list) => list.id === shopping.selectedListId)) {
+    return shopping.selectedListId
+  }
+  return shopping.activeLists[0]?.id ?? shopping.lists[0]?.id ?? ''
 })
 
 const listOptions = computed(() =>
   shopping.lists.map((list) => ({
     label: list.name,
     value: list.id,
+    pending: list.accessStatus === 'pending',
   })),
+)
+
+const selectTriggerClass = computed(() =>
+  [
+    'h-10 px-3 py-2',
+    shopping.hasPendingListInvitations ? 'notification-pulse border-primary/50' : '',
+  ].join(' ').trim(),
 )
 
 const onSelectList = async (value: string) => {
   if (!value) return
+  const targetList = shopping.lists.find((list) => list.id === value)
+  if (!targetList) return
+
+  if (targetList.accessStatus === 'pending') {
+    pendingListForReview.value = targetList
+    return
+  }
+
   await router.push(`/lists/${value}`)
+}
+
+const closePendingInvitationPopup = () => {
+  if (respondingToInvitation.value) return
+  pendingListForReview.value = null
+}
+
+const acceptPendingInvitation = async () => {
+  if (!pendingListForReview.value) return
+  respondingToInvitation.value = true
+  try {
+    const acceptedListId = pendingListForReview.value.id
+    await shopping.respondToInvitation(acceptedListId, true)
+    pendingListForReview.value = null
+    await router.push(`/lists/${acceptedListId}`)
+  } finally {
+    respondingToInvitation.value = false
+  }
+}
+
+const rejectPendingInvitation = async () => {
+  if (!pendingListForReview.value) return
+  respondingToInvitation.value = true
+  try {
+    await shopping.respondToInvitation(pendingListForReview.value.id, false)
+    pendingListForReview.value = null
+  } finally {
+    respondingToInvitation.value = false
+  }
 }
 
 const openCreateList = () => {

@@ -54,7 +54,7 @@
           bordered
           @click="$emit('remove-member', member.userId)"
         >
-          Usuń
+          {{ member.isCurrentUser ? 'Opuść listę' : 'Usuń' }}
         </FButton>
       </div>
     </div>
@@ -98,7 +98,8 @@ defineEmits<{
 const showDeleteList = computed(() => props.canManage && props.canDeleteList)
 
 const canRemoveMember = (member: ShoppingListMember) =>
-  props.canRemoveMembers && !member.isCurrentUser && member.role !== 'owner'
+  (props.canRemoveMembers && !member.isCurrentUser && member.role !== 'owner')
+  || (member.isCurrentUser && member.role !== 'owner')
 </script>
 
 <style scoped></style>

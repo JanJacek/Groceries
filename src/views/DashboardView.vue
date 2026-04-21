@@ -356,14 +356,24 @@ const syncSelectedList = async () => {
   }
 
   shopping.selectedListId = routeListId
+  if (shopping.selectedList?.accessStatus !== 'active') {
+    await Promise.all([shopping.loadItems(null), shopping.loadMembers(null)])
+    displayedList.value = null
+    return
+  }
+
   await Promise.all([shopping.loadItems(routeListId), shopping.loadMembers(routeListId)])
   displayedList.value = shopping.selectedList
 }
 
 const goToLists = async () => {
-  const targetListId = shopping.selectedListId || shopping.lists[0]?.id
+  const targetListId = shopping.activeLists[0]?.id
   if (targetListId) {
     await router.push(`/lists/${targetListId}`)
+    return
+  }
+  if (shopping.pendingLists.length) {
+    await router.push('/')
     return
   }
   await router.push({ path: '/', query: { mode: 'new-list' } })
@@ -472,7 +482,7 @@ const addContactToList = async (userId: string) => {
       throw new Error('Store nie ma akcji dodawania współpracownika. Odśwież aplikację.')
     }
 
-    memberSuccess.value = 'Użytkownik został dodany do listy.'
+    memberSuccess.value = 'Zaproszenie do listy zostało wysłane.'
     showContactsPickerPopup.value = false
   } catch (error) {
     memberError.value = error instanceof Error ? error.message : 'Nie udało się dodać użytkownika do listy.'
@@ -485,8 +495,14 @@ const removeMember = async (userId: string) => {
   memberError.value = ''
   memberSuccess.value = ''
   try {
+    const currentMember = shopping.members.find((member) => member.userId === userId)
     await shopping.removeMember(userId)
-    memberSuccess.value = 'Użytkownik został usunięty z listy.'
+    memberSuccess.value = currentMember?.isCurrentUser
+      ? 'Opuściłeś tę listę.'
+      : 'Użytkownik został usunięty z listy.'
+    if (currentMember?.isCurrentUser) {
+      await goToLists()
+    }
   } catch (error) {
     memberError.value = error instanceof Error ? error.message : 'Nie udało się usunąć użytkownika z listy.'
   }

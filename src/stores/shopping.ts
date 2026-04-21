@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
 export type ShoppingListRole = 'owner' | 'editor'
+export type ShoppingListAccessStatus = 'active' | 'pending'
 
 export type ShoppingList = {
   id: string
@@ -17,6 +18,8 @@ export type ShoppingList = {
   createdAt: string
   updatedAt: string
   currentUserRole: ShoppingListRole
+  accessStatus: ShoppingListAccessStatus
+  invitedAt: string | null
 }
 
 export type ShoppingItem = {
@@ -50,7 +53,9 @@ type ShoppingListRow = {
   archived: boolean
   created_at: string
   updated_at: string
-  shopping_list_members: { role: ShoppingListRole }[] | { role: ShoppingListRole } | null
+  current_user_role: ShoppingListRole
+  access_status: ShoppingListAccessStatus
+  invited_at: string | null
 }
 
 type ShoppingItemRow = {
@@ -86,11 +91,6 @@ type ShoppingListRealtimeRow = {
   updated_at: string
 }
 
-const mapListRole = (value: ShoppingListRow['shopping_list_members']): ShoppingListRole => {
-  if (Array.isArray(value)) return value[0]?.role ?? 'editor'
-  return value?.role ?? 'editor'
-}
-
 const mapList = (row: ShoppingListRow): ShoppingList => ({
   id: row.id,
   name: row.name,
@@ -98,7 +98,9 @@ const mapList = (row: ShoppingListRow): ShoppingList => ({
   archived: row.archived,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
-  currentUserRole: mapListRole(row.shopping_list_members),
+  currentUserRole: row.current_user_role ?? 'editor',
+  accessStatus: row.access_status ?? 'active',
+  invitedAt: row.invited_at ?? null,
 })
 
 const mapItem = (row: ShoppingItemRow): ShoppingItem => ({
@@ -140,8 +142,13 @@ export const useShoppingStore = defineStore('shopping', () => {
   const selectedList = computed(
     () => lists.value.find((list) => list.id === selectedListId.value) ?? null,
   )
-  const canManageSelectedListMembers = computed(() => selectedList.value?.currentUserRole === 'owner')
-  const canEditSelectedList = computed(() => Boolean(selectedList.value))
+  const activeLists = computed(() => lists.value.filter((list) => list.accessStatus === 'active'))
+  const pendingLists = computed(() => lists.value.filter((list) => list.accessStatus === 'pending'))
+  const hasPendingListInvitations = computed(() => pendingLists.value.length > 0)
+  const canManageSelectedListMembers = computed(
+    () => selectedList.value?.accessStatus === 'active' && selectedList.value?.currentUserRole === 'owner',
+  )
+  const canEditSelectedList = computed(() => selectedList.value?.accessStatus === 'active')
   const debugEnabled = import.meta.env.DEV
 
   const debugItems = (label: string) => {
@@ -178,7 +185,8 @@ export const useShoppingStore = defineStore('shopping', () => {
     listId = selectedListId.value,
     options?: { silent?: boolean },
   ) => {
-    if (!listId) {
+    const targetList = lists.value.find((list) => list.id === listId)
+    if (!listId || targetList?.accessStatus !== 'active') {
       members.value = []
       return
     }
@@ -200,7 +208,8 @@ export const useShoppingStore = defineStore('shopping', () => {
     listId = selectedListId.value,
     options?: { silent?: boolean },
   ) => {
-    if (!listId) {
+    const targetList = lists.value.find((list) => list.id === listId)
+    if (!listId || targetList?.accessStatus !== 'active') {
       items.value = []
       return
     }
@@ -225,18 +234,11 @@ export const useShoppingStore = defineStore('shopping', () => {
   }
 
   const loadLists = async (options?: { silent?: boolean; reloadSelected?: boolean }) => {
-    const userId = ensureUserId()
+    ensureUserId()
     if (!options?.silent) loadingLists.value = true
 
     try {
-      const { data, error } = await supabase
-        .from('shopping_lists')
-        .select(
-          'id, name, note, archived, created_at, updated_at, shopping_list_members!inner(role)',
-        )
-        .eq('shopping_list_members.user_id', userId)
-        .order('archived', { ascending: true })
-        .order('updated_at', { ascending: false })
+      const { data, error } = await supabase.rpc('list_available_shopping_lists')
 
       if (error) throw error
       lists.value = ((data ?? []) as ShoppingListRow[]).map(mapList)
@@ -250,14 +252,17 @@ export const useShoppingStore = defineStore('shopping', () => {
       }
 
       if (!selectedListId.value || !lists.value.some((list) => list.id === selectedListId.value)) {
-        selectedListId.value = lists.value[0]?.id ?? null
+        selectedListId.value = activeLists.value[0]?.id ?? lists.value[0]?.id ?? null
       }
 
-      if (options?.reloadSelected !== false) {
+      if (options?.reloadSelected !== false && selectedList.value?.accessStatus === 'active') {
         await Promise.all([
           loadItems(selectedListId.value, options),
           loadMembers(selectedListId.value, options),
         ])
+      } else if (selectedList.value?.accessStatus !== 'active') {
+        items.value = []
+        members.value = []
       }
       ready.value = true
     } finally {
@@ -305,8 +310,10 @@ export const useShoppingStore = defineStore('shopping', () => {
       lists.value.find((list) => list.id === listId)?.currentUserRole ?? selectedList.value?.currentUserRole ?? 'editor'
 
     const updated = mapList({
-      ...(data as Omit<ShoppingListRow, 'shopping_list_members'>),
-      shopping_list_members: [{ role: currentUserRole }],
+      ...(data as Omit<ShoppingListRow, 'current_user_role' | 'access_status' | 'invited_at'>),
+      current_user_role: currentUserRole,
+      access_status: 'active',
+      invited_at: null,
     })
 
     lists.value = lists.value.map((list) => (list.id === listId ? updated : list))
@@ -416,7 +423,7 @@ export const useShoppingStore = defineStore('shopping', () => {
     })
 
     if (error) throw error
-    await loadMembers(listId)
+    await loadLists({ silent: true, reloadSelected: false })
   }
 
   // Backward-compatible alias for hot-reload / stale component references.
@@ -435,6 +442,16 @@ export const useShoppingStore = defineStore('shopping', () => {
 
     if (error) throw error
     await loadMembers(listId)
+  }
+
+  const respondToInvitation = async (listId: string, accept: boolean) => {
+    const { error } = await supabase.rpc(
+      accept ? 'accept_shopping_list_invitation' : 'reject_shopping_list_invitation',
+      { p_list_id: listId },
+    )
+
+    if (error) throw error
+    await loadLists({ reloadSelected: false })
   }
 
   const handleItemChange = (
@@ -534,12 +551,13 @@ export const useShoppingStore = defineStore('shopping', () => {
     const changedId = nextListRow?.id
     if (!changedId) return
 
-    const currentRole =
-      lists.value.find((list) => list.id === changedId)?.currentUserRole ?? 'editor'
+    const currentList = lists.value.find((list) => list.id === changedId)
 
     const nextList = mapList({
-      ...(nextListRow as Omit<ShoppingListRow, 'shopping_list_members'>),
-      shopping_list_members: [{ role: currentRole }],
+      ...(nextListRow as Omit<ShoppingListRow, 'current_user_role' | 'access_status' | 'invited_at'>),
+      current_user_role: currentList?.currentUserRole ?? 'editor',
+      access_status: currentList?.accessStatus ?? 'active',
+      invited_at: currentList?.invitedAt ?? null,
     })
 
     const existingIndex = lists.value.findIndex((list) => list.id === nextList.id)
@@ -549,6 +567,20 @@ export const useShoppingStore = defineStore('shopping', () => {
     }
 
     lists.value = lists.value.map((list) => (list.id === nextList.id ? nextList : list))
+  }
+
+  const handleInvitationChange = (
+    payload: RealtimePostgresChangesPayload<{
+      invitee_user_id?: string
+    }>,
+  ) => {
+    const inviteeUserId =
+      (payload.new as { invitee_user_id?: string } | null)?.invitee_user_id ??
+      (payload.old as { invitee_user_id?: string } | null)?.invitee_user_id
+
+    if (inviteeUserId === auth.user?.id) {
+      void loadLists({ silent: true, reloadSelected: false })
+    }
   }
 
   const initializeRealtime = (userId: string) => {
@@ -570,6 +602,11 @@ export const useShoppingStore = defineStore('shopping', () => {
         { event: '*', schema: 'public', table: 'shopping_list_members' },
         handleMemberChange,
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shopping_list_invitations' },
+        handleInvitationChange,
+      )
       .subscribe()
   }
 
@@ -589,6 +626,9 @@ export const useShoppingStore = defineStore('shopping', () => {
     members,
     selectedListId,
     selectedList,
+    activeLists,
+    pendingLists,
+    hasPendingListInvitations,
     loadingLists,
     loadingItems,
     loadingMembers,
@@ -608,5 +648,6 @@ export const useShoppingStore = defineStore('shopping', () => {
     addMemberFromContacts,
     inviteMember,
     removeMember,
+    respondToInvitation,
   }
 })
