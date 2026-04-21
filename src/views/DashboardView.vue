@@ -107,6 +107,8 @@
                 <FShoppingItemForm
                   v-model="itemForm"
                   :condition-options="itemConditionOptions"
+                  :product-suggestions="productSuggestions"
+                  :loading-suggestions="loadingProductSuggestions"
                   :saving="savingItem"
                   :error="itemError"
                   :editing="Boolean(editingItemId)"
@@ -245,8 +247,10 @@ const showContactsPickerPopup = ref(false)
 const savingList = ref(false)
 const savingItem = ref(false)
 const addingContactToList = ref(false)
+const loadingProductSuggestions = ref(false)
 const editingListId = ref<string | null>(null)
 const editingItemId = ref<string | null>(null)
+const productSuggestions = ref<string[]>([])
 const listError = ref('')
 const itemError = ref('')
 const memberError = ref('')
@@ -333,6 +337,7 @@ const resetItemForm = () => {
     quantity: 1,
     conditionType: '',
   }
+  productSuggestions.value = []
 }
 
 const syncSelectedList = async () => {
@@ -599,6 +604,48 @@ onMounted(() => {
     resetItemForm()
   })
 })
+
+let productSearchTimeout: ReturnType<typeof setTimeout> | null = null
+let productSearchRequestId = 0
+
+watch(
+  () => itemForm.value.name,
+  (name) => {
+    if (productSearchTimeout) {
+      clearTimeout(productSearchTimeout)
+      productSearchTimeout = null
+    }
+
+    const trimmedName = name.trim()
+    if (!isItemFormMode.value || trimmedName.length < 1) {
+      loadingProductSuggestions.value = false
+      productSuggestions.value = []
+      return
+    }
+
+    loadingProductSuggestions.value = true
+    const requestId = ++productSearchRequestId
+
+    productSearchTimeout = setTimeout(() => {
+      void shopping
+        .searchProducts(trimmedName)
+        .then((results) => {
+          if (requestId !== productSearchRequestId) return
+          productSuggestions.value = results.filter(
+            (suggestion) => suggestion.toLocaleLowerCase('pl-PL') !== trimmedName.toLocaleLowerCase('pl-PL'),
+          )
+        })
+        .catch(() => {
+          if (requestId !== productSearchRequestId) return
+          productSuggestions.value = []
+        })
+        .finally(() => {
+          if (requestId !== productSearchRequestId) return
+          loadingProductSuggestions.value = false
+        })
+    }, 260)
+  },
+)
 
 watch(
   () => shopping.selectedList,

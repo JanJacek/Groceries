@@ -25,6 +25,7 @@ export type ShoppingList = {
 export type ShoppingItem = {
   id: string
   listId: string
+  productId: string
   createdBy: string | null
   updatedBy: string | null
   name: string
@@ -35,6 +36,11 @@ export type ShoppingItem = {
   completedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type ProductCatalogItem = {
+  id: string
+  name: string
 }
 
 export type ShoppingListMember = {
@@ -61,6 +67,7 @@ type ShoppingListRow = {
 type ShoppingItemRow = {
   id: string
   list_id: string
+  product_id: string
   created_by: string | null
   updated_by: string | null
   name: string
@@ -71,6 +78,12 @@ type ShoppingItemRow = {
   completed_at: string | null
   created_at: string
   updated_at: string
+}
+
+type ProductCatalogRow = {
+  id: string
+  name: string
+  normalized_name?: string
 }
 
 type ShoppingListMemberRow = {
@@ -106,6 +119,7 @@ const mapList = (row: ShoppingListRow): ShoppingList => ({
 const mapItem = (row: ShoppingItemRow): ShoppingItem => ({
   id: row.id,
   listId: row.list_id,
+  productId: row.product_id,
   createdBy: row.created_by,
   updatedBy: row.updated_by,
   name: row.name,
@@ -118,6 +132,11 @@ const mapItem = (row: ShoppingItemRow): ShoppingItem => ({
   updatedAt: row.updated_at,
 })
 
+const mapProduct = (row: ProductCatalogRow): ProductCatalogItem => ({
+  id: row.id,
+  name: row.name,
+})
+
 const mapMember = (row: ShoppingListMemberRow): ShoppingListMember => ({
   userId: row.user_id,
   email: row.email,
@@ -127,10 +146,17 @@ const mapMember = (row: ShoppingListMemberRow): ShoppingListMember => ({
   isCurrentUser: row.is_current_user,
 })
 
+const isDuplicateListProductError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === '23505'
+
 export const useShoppingStore = defineStore('shopping', () => {
   const auth = useAuthStore()
   const lists = ref<ShoppingList[]>([])
   const items = ref<ShoppingItem[]>([])
+  const products = ref<ProductCatalogItem[]>([])
   const members = ref<ShoppingListMember[]>([])
   const selectedListId = ref<string | null>(null)
   const loadingLists = ref(false)
@@ -170,6 +196,7 @@ export const useShoppingStore = defineStore('shopping', () => {
   const clearState = () => {
     lists.value = []
     items.value = []
+    products.value = []
     members.value = []
     selectedListId.value = null
     ready.value = false
@@ -220,7 +247,7 @@ export const useShoppingStore = defineStore('shopping', () => {
       const { data, error } = await supabase
         .from('shopping_items')
         .select(
-          'id, list_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
+          'id, list_id, product_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
         )
         .eq('list_id', listId)
         .order('sort_order', { ascending: true })
@@ -231,6 +258,77 @@ export const useShoppingStore = defineStore('shopping', () => {
     } finally {
       if (!options?.silent) loadingItems.value = false
     }
+  }
+
+  const loadProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name')
+      .order('updated_at', { ascending: false })
+      .limit(200)
+
+    if (error) throw error
+    products.value = ((data ?? []) as ProductCatalogRow[]).map(mapProduct)
+  }
+
+  const searchProducts = async (query: string) => {
+    const normalizedQuery = query.trim().toLocaleLowerCase('pl-PL')
+    if (normalizedQuery.length < 1) return []
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, normalized_name')
+      .ilike('normalized_name', `%${normalizedQuery}%`)
+      .limit(12)
+
+    if (error) throw error
+
+    return ((data ?? []) as ProductCatalogRow[])
+      .sort((left, right) => {
+        const leftName = (left.normalized_name ?? left.name).toLocaleLowerCase('pl-PL')
+        const rightName = (right.normalized_name ?? right.name).toLocaleLowerCase('pl-PL')
+        const leftStarts = leftName.startsWith(normalizedQuery) ? 0 : 1
+        const rightStarts = rightName.startsWith(normalizedQuery) ? 0 : 1
+        if (leftStarts !== rightStarts) return leftStarts - rightStarts
+
+        const leftIndex = leftName.indexOf(normalizedQuery)
+        const rightIndex = rightName.indexOf(normalizedQuery)
+        if (leftIndex !== rightIndex) return leftIndex - rightIndex
+
+        return leftName.localeCompare(rightName, 'pl', { sensitivity: 'base' })
+      })
+      .map((product) => product.name)
+  }
+
+  const ensureProduct = async (rawName: string) => {
+    const trimmedName = rawName.trim()
+    const normalizedName = trimmedName.toLocaleLowerCase('pl-PL')
+    const userId = ensureUserId()
+
+    const { data, error } = await supabase
+      .from('products')
+      .upsert(
+        {
+          name: trimmedName,
+          normalized_name: normalizedName,
+          created_by: userId,
+        },
+        { onConflict: 'normalized_name' },
+      )
+      .select('id, name')
+      .single()
+
+    if (error) throw error
+
+    const product = mapProduct(data as ProductCatalogRow)
+    const existingIndex = products.value.findIndex((entry) => entry.id === product.id)
+    if (existingIndex === -1) {
+      products.value = [product, ...products.value]
+    } else {
+      products.value = products.value.map((entry) => (entry.id === product.id ? product : entry))
+    }
+
+    return product
   }
 
   const loadLists = async (options?: { silent?: boolean; reloadSelected?: boolean }) => {
@@ -337,23 +435,38 @@ export const useShoppingStore = defineStore('shopping', () => {
     conditionType: 'promotion' | null
   }) => {
     const userId = ensureUserId()
+    const product = await ensureProduct(payload.name)
+
+    const duplicateItem = items.value.find(
+      (item) => item.listId === payload.listId && item.productId === product.id,
+    )
+    if (duplicateItem) {
+      throw new Error('Ten produkt jest już na tej liście.')
+    }
+
     const { data, error } = await supabase
       .from('shopping_items')
       .insert({
+        product_id: product.id,
         created_by: userId,
         updated_by: userId,
         list_id: payload.listId,
-        name: payload.name.trim(),
+        name: product.name,
         quantity: payload.quantity,
         condition_type: payload.conditionType,
         sort_order: items.value.length,
       })
       .select(
-        'id, list_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
+        'id, list_id, product_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
       )
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (isDuplicateListProductError(error)) {
+        throw new Error('Ten produkt jest już na tej liście.')
+      }
+      throw error
+    }
     items.value = [...items.value, mapItem(data as ShoppingItemRow)]
   }
 
@@ -366,21 +479,42 @@ export const useShoppingStore = defineStore('shopping', () => {
     },
   ) => {
     const userId = ensureUserId()
+    const product = await ensureProduct(payload.name)
+
+    const currentItem = items.value.find((item) => item.id === itemId)
+    if (!currentItem) throw new Error('Nie znaleziono produktu do edycji.')
+
+    const duplicateItem = items.value.find(
+      (item) =>
+        item.id !== itemId &&
+        item.listId === currentItem.listId &&
+        item.productId === product.id,
+    )
+    if (duplicateItem) {
+      throw new Error('Ten produkt jest już na tej liście.')
+    }
+
     const { data, error } = await supabase
       .from('shopping_items')
       .update({
+        product_id: product.id,
         updated_by: userId,
-        name: payload.name.trim(),
+        name: product.name,
         quantity: payload.quantity,
         condition_type: payload.conditionType,
       })
       .eq('id', itemId)
       .select(
-        'id, list_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
+        'id, list_id, product_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
       )
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (isDuplicateListProductError(error)) {
+        throw new Error('Ten produkt jest już na tej liście.')
+      }
+      throw error
+    }
     const updated = mapItem(data as ShoppingItemRow)
     items.value = items.value.map((item) => (item.id === itemId ? updated : item))
   }
@@ -397,7 +531,7 @@ export const useShoppingStore = defineStore('shopping', () => {
       })
       .eq('id', itemId)
       .select(
-        'id, list_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
+        'id, list_id, product_id, created_by, updated_by, name, quantity, condition_type, is_completed, sort_order, completed_at, created_at, updated_at',
       )
       .single()
 
@@ -441,6 +575,10 @@ export const useShoppingStore = defineStore('shopping', () => {
     })
 
     if (error) throw error
+    if (userId === auth.user?.id) {
+      await loadLists({ reloadSelected: false })
+      return
+    }
     await loadMembers(listId)
   }
 
@@ -623,6 +761,7 @@ export const useShoppingStore = defineStore('shopping', () => {
   return {
     lists,
     items,
+    products,
     members,
     selectedListId,
     selectedList,
@@ -638,6 +777,8 @@ export const useShoppingStore = defineStore('shopping', () => {
     loadLists,
     loadItems,
     loadMembers,
+    loadProducts,
+    searchProducts,
     createList,
     updateList,
     deleteList,

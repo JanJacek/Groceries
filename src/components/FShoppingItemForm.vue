@@ -1,7 +1,13 @@
 <template>
   <div class="grid gap-4">
     <FField label="Nazwa">
-      <FInput :model-value="modelValue.name" @update:model-value="updateName" />
+      <FAutocomplete
+        :model-value="modelValue.name"
+        :suggestions="productSuggestions"
+        :loading="loadingSuggestions"
+        placeholder="Wpisz nazwę produktu"
+        @update:model-value="updateName"
+      />
     </FField>
 
     <FField label="Warunek">
@@ -40,9 +46,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import FAutocomplete from '@/components/FAutocomplete.vue'
 import FButton from '@/components/FButton.vue'
 import FField from '@/components/FField.vue'
-import FInput from '@/components/FInput.vue'
 import FMessage from '@/components/FMessage.vue'
 import FSelect from '@/components/FSelect.vue'
 
@@ -64,11 +70,15 @@ const props = withDefaults(
     saving?: boolean
     error?: string
     editing?: boolean
+    productSuggestions?: string[]
+    loadingSuggestions?: boolean
   }>(),
   {
     saving: false,
     error: '',
     editing: false,
+    productSuggestions: () => [],
+    loadingSuggestions: false,
   },
 )
 
