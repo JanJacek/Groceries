@@ -73,9 +73,6 @@
               <FMessage v-if="settlementError && !isEditorMode" variant="error" custom-class="m-4">
                 {{ settlementError }}
               </FMessage>
-              <FMessage v-if="settlementSuccess && !isEditorMode" variant="success" custom-class="m-4">
-                {{ settlementSuccess }}
-              </FMessage>
               <template v-if="isListSettingsMode">
                 <FShoppingMembersPanel
                   :members="shopping.members"
@@ -261,7 +258,6 @@ const itemError = ref('')
 const memberError = ref('')
 const memberSuccess = ref('')
 const settlementError = ref('')
-const settlementSuccess = ref('')
 const displayedList = ref<ShoppingList | null>(null)
 
 const listForm = ref({
@@ -517,7 +513,6 @@ const openCreateItem = () => {
   editingItemId.value = null
   itemError.value = ''
   settlementError.value = ''
-  settlementSuccess.value = ''
   resetItemForm()
   editorMode.value = 'new-item'
 }
@@ -581,14 +576,9 @@ const settleCompletedItems = async () => {
   if (!shopping.selectedList || completedItemsCount.value < 1) return
 
   settlementError.value = ''
-  settlementSuccess.value = ''
   settlingItems.value = true
   try {
-    const result = await shopping.settleCompletedItems(shopping.selectedList.id)
-    settlementSuccess.value =
-      result.settledItemsCount === 1
-        ? 'Utworzono paragon i usunięto 1 produkt z listy.'
-        : `Utworzono paragon i usunięto ${result.settledItemsCount} produkty z listy.`
+    await shopping.settleCompletedItems(shopping.selectedList.id)
   } catch (error) {
     settlementError.value = error instanceof Error ? error.message : 'Nie udało się rozliczyć listy.'
   } finally {
@@ -689,7 +679,6 @@ watch(
   () => {
     displayedList.value = null
     settlementError.value = ''
-    settlementSuccess.value = ''
     editorMode.value = route.query.mode === 'new-list' ? 'new-list' : 'view'
     void syncSelectedList()
   },

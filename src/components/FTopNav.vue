@@ -3,7 +3,7 @@
     <nav class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
       <div class="flex min-w-0 items-center gap-3 md:gap-4">
         <router-link
-          to="/"
+          :to="logoTarget"
           class="flex shrink-0 items-center gap-3 font-serif text-2xl font-semibold tracking-tight text-text"
         >
           <svg
@@ -95,6 +95,10 @@ const activeListId = computed(() => {
   }
   return shopping.activeLists[0]?.id ?? shopping.lists[0]?.id ?? ''
 })
+
+const logoTarget = computed(() =>
+  activeListId.value ? `/lists/${activeListId.value}` : '/',
+)
 
 const listOptions = computed(() =>
   shopping.lists.map((list) => ({

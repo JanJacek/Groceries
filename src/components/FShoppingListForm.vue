@@ -13,18 +13,6 @@
       ></textarea>
     </FField>
 
-    <label class="grid gap-1 text-sm text-text">
-      <span class="inline-flex items-center gap-2">
-        <input
-          :checked="modelValue.archived"
-          type="checkbox"
-          class="h-4 w-4 rounded border-border"
-          @change="updateArchived"
-        />
-        Oznacz listę jako archiwalną
-      </span>
-    </label>
-
     <FMessage v-if="error" variant="error">{{ error }}</FMessage>
     <slot name="after-fields" />
 
@@ -77,13 +65,6 @@ const updateTextarea = (event: Event) => {
   updateField('note', target.value)
 }
 
-const updateArchived = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  emit('update:modelValue', {
-    ...props.modelValue,
-    archived: target.checked,
-  })
-}
 </script>
 
 <style scoped></style>
