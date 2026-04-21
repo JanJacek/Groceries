@@ -4,6 +4,7 @@ import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import ContactsView from '@/views/ContactsView.vue'
+import PurchaseHistoryView from '@/views/PurchaseHistoryView.vue'
 import TermsView from '@/views/TermsView.vue'
 import PrivacyView from '@/views/PrivacyView.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -50,6 +51,12 @@ const router = createRouter({
       path: '/contacts',
       name: 'contacts',
       component: ContactsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/history',
+      name: 'history',
+      component: PurchaseHistoryView,
       meta: { requiresAuth: true },
     },
     {

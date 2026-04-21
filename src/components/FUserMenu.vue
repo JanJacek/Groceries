@@ -63,6 +63,17 @@
         Ustawienia
       </router-link>
 
+      <router-link
+        to="/history"
+        class="flex items-center gap-2 rounded-[8px] px-3 py-2 text-sm text-text hover:bg-primary/5"
+        @click="closeMenu"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path :d="mdiReceiptTextOutline" />
+        </svg>
+        Historia zakupów
+      </router-link>
+
       <button
         type="button"
         class="flex w-full items-center gap-2 rounded-[8px] px-3 py-2 text-left text-sm text-text hover:bg-primary/5"
@@ -83,6 +94,7 @@ import {
   mdiCogOutline,
   mdiLogoutVariant,
   mdiMoonWaningCrescent,
+  mdiReceiptTextOutline,
   mdiWhiteBalanceSunny,
 } from '@mdi/js'
 import FAvatar from '@/components/FAvatar.vue'
