@@ -67,206 +67,56 @@
 
             <div :class="isEditorMode ? 'grid gap-4 p-4' : 'grid gap-0 p-0'">
               <template v-if="isListSettingsMode">
-                <div class="grid gap-4">
-                  <div class="grid gap-2">
-                    <FButton
-                      v-if="canManageListMembers"
-                      type="button"
-                      variant="ghost"
-                      bordered
-                      custom-class="justify-start"
-                      :icon="mdiAccountPlusOutline"
-                      @click="openContactsPicker"
-                    >
-                      Dodaj znajomego
-                    </FButton>
-                    <FButton
-                      v-if="canManageListMembers"
-                      type="button"
-                      variant="ghost"
-                      bordered
-                      custom-class="justify-start"
-                      :icon="mdiTrashCanOutline"
-                      @click="removeListFromSettings"
-                    >
-                      Usuń listę
-                    </FButton>
-                  </div>
-
-                  <FMessage v-if="memberError" variant="error">{{ memberError }}</FMessage>
-                  <FMessage v-if="memberSuccess" variant="success">{{ memberSuccess }}</FMessage>
-
-                  <div v-if="shopping.loadingMembers" class="text-sm text-muted">Ładowanie współpracowników...</div>
-                  <div v-else class="grid gap-3">
-                    <div
-                      v-for="member in shopping.members"
-                      :key="member.userId"
-                      class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border p-4"
-                    >
-                      <div class="flex items-center gap-3">
-                        <FAvatar :text="member.avatarInitials || member.email" />
-                        <div>
-                          <p class="m-0 font-semibold text-text">
-                            {{ member.email }}
-                            <span v-if="member.isCurrentUser" class="text-sm font-normal text-muted">(Ty)</span>
-                          </p>
-                          <p class="mt-1 text-sm text-muted">
-                            {{ member.role === 'owner' ? 'Właściciel listy' : 'Może edytować listę i produkty' }}
-                          </p>
-                        </div>
-                      </div>
-                      <FButton
-                        v-if="shopping.canManageSelectedListMembers && !member.isCurrentUser && member.role !== 'owner'"
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        bordered
-                        @click="removeMember(member.userId)"
-                      >
-                        Usuń
-                      </FButton>
-                    </div>
-                  </div>
-                </div>
+                <FShoppingMembersPanel
+                  :members="shopping.members"
+                  :loading="shopping.loadingMembers"
+                  :can-manage="canManageListMembers"
+                  :can-remove-members="shopping.canManageSelectedListMembers"
+                  :error="memberError"
+                  :success="memberSuccess"
+                  @add="openContactsPicker"
+                  @delete-list="removeListFromSettings"
+                  @remove-member="removeMember"
+                />
               </template>
 
               <template v-else-if="isListFormMode">
-                <div class="grid gap-4">
-                  <label class="grid gap-1 text-sm text-text">
-                    Nazwa
-                    <input
-                      v-model="listForm.name"
-                      type="text"
-                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
+                <FShoppingListForm
+                  v-model="listForm"
+                  :saving="savingList"
+                  :error="listError"
+                  @submit="submitList"
+                >
+                  <template v-if="editingListId" #after-fields>
+                    <FShoppingMembersPanel
+                      :members="shopping.members"
+                      :loading="shopping.loadingMembers"
+                      :can-manage="canManageListMembers"
+                      :can-remove-members="shopping.canManageSelectedListMembers"
+                      :error="memberError"
+                      :success="memberSuccess"
+                      @add="openContactsPicker"
+                      @delete-list="removeListFromSettings"
+                      @remove-member="removeMember"
                     />
-                  </label>
-                  <label class="grid gap-1 text-sm text-text">
-                    Notatka
-                    <textarea
-                      v-model="listForm.note"
-                      rows="3"
-                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-                    ></textarea>
-                  </label>
-                  <label class="grid gap-1 text-sm text-text">
-                    <input v-model="listForm.archived" type="checkbox" class="h-4 w-4 rounded border-border" />
-                    Oznacz listę jako archiwalną
-                  </label>
-                  <FMessage v-if="listError" variant="error">{{ listError }}</FMessage>
-                  <div v-if="editingListId" class="grid gap-2">
-                    <FButton
-                      v-if="canManageListMembers"
-                      type="button"
-                      variant="ghost"
-                      bordered
-                      custom-class="justify-start"
-                      :icon="mdiAccountPlusOutline"
-                      @click="openContactsPicker"
-                    >
-                      Dodaj znajomego
-                    </FButton>
-                    <FButton
-                      v-if="canManageListMembers"
-                      type="button"
-                      variant="ghost"
-                      bordered
-                      custom-class="justify-start"
-                      :icon="mdiTrashCanOutline"
-                      @click="removeListFromSettings"
-                    >
-                      Usuń listę
-                    </FButton>
-                  </div>
-                  <FMessage v-if="editingListId && memberError" variant="error">{{ memberError }}</FMessage>
-                  <FMessage v-if="editingListId && memberSuccess" variant="success">{{ memberSuccess }}</FMessage>
-                  <div v-if="editingListId && shopping.loadingMembers" class="text-sm text-muted">
-                    Ładowanie współpracowników...
-                  </div>
-                  <div v-else-if="editingListId" class="grid gap-3">
-                    <div
-                      v-for="member in shopping.members"
-                      :key="member.userId"
-                      class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border p-4"
-                    >
-                      <div class="flex items-center gap-3">
-                        <FAvatar :text="member.avatarInitials || member.email" />
-                        <div>
-                          <p class="m-0 font-semibold text-text">
-                            {{ member.email }}
-                            <span v-if="member.isCurrentUser" class="text-sm font-normal text-muted">(Ty)</span>
-                          </p>
-                          <p class="mt-1 text-sm text-muted">
-                            {{ member.role === 'owner' ? 'Właściciel listy' : 'Może edytować listę i produkty' }}
-                          </p>
-                        </div>
-                      </div>
-                      <FButton
-                        v-if="shopping.canManageSelectedListMembers && !member.isCurrentUser && member.role !== 'owner'"
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        bordered
-                        @click="removeMember(member.userId)"
-                      >
-                        Usuń
-                      </FButton>
-                    </div>
-                  </div>
-                  <div class="flex justify-end">
-                    <FButton type="button" :disabled="savingList" @click="submitList">
-                      {{ savingList ? 'Zapisywanie...' : 'Zapisz listę' }}
-                    </FButton>
-                  </div>
-                </div>
+                  </template>
+                </FShoppingListForm>
               </template>
 
               <template v-else-if="isItemFormMode">
-                <div class="grid gap-4">
-                  <label class="grid gap-1 text-sm text-text">
-                    Nazwa
-                    <input
-                      v-model="itemForm.name"
-                      type="text"
-                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-                    />
-                  </label>
-                  <label class="grid gap-1 text-sm text-text">
-                    Warunek
-                    <FSelect v-model="itemForm.conditionType" :options="itemConditionOptions" />
-                  </label>
-                  <label class="grid gap-1 text-sm text-text">
-                    Ilość
-                    <input
-                      v-model.number="itemForm.quantity"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      class="rounded-[10px] border border-border px-3 py-2 text-text outline-none"
-                    />
-                  </label>
-                  <FMessage v-if="itemError" variant="error">{{ itemError }}</FMessage>
-                  <div class="flex justify-end gap-3">
-                    <FButton
-                      type="button"
-                      variant="ghost"
-                      bordered
-                      :disabled="savingItem"
-                      @click="editingItemId ? removeItemFromPopup() : closeEditor()"
-                    >
-                      {{ editingItemId ? 'Usuń' : 'Anuluj' }}
-                    </FButton>
-                    <FButton type="button" :disabled="savingItem" @click="submitItem">
-                      {{ savingItem ? 'Zapisywanie...' : 'Zapisz' }}
-                    </FButton>
-                  </div>
-                </div>
+                <FShoppingItemForm
+                  v-model="itemForm"
+                  :condition-options="itemConditionOptions"
+                  :saving="savingItem"
+                  :error="itemError"
+                  :editing="Boolean(editingItemId)"
+                  @submit="submitItem"
+                  @secondary-action="editingItemId ? removeItemFromPopup() : closeEditor()"
+                />
               </template>
 
               <div v-else-if="shopping.loadingItems" class="text-sm text-muted">Ładowanie produktów...</div>
-              <div
-              v-else-if="!shopping.items.length"
-                class="grid gap-4 rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
-              >
+              <FEmptyState v-else-if="!shopping.items.length">
                 <p class="m-0">Ta lista jest pusta. Dodaj pierwszy produkt, żeby zacząć.</p>
                 <div>
                   <FButton
@@ -279,13 +129,10 @@
                     @click="openCreateItem"
                   />
                 </div>
-              </div>
-              <div
-                v-else-if="!filteredItems.length"
-                class="rounded-[14px] border border-dashed border-border p-6 text-sm text-muted"
-              >
+              </FEmptyState>
+              <FEmptyState v-else-if="!filteredItems.length" container-class="p-6">
                 Brak pozycji dla wybranych filtrów.
-              </div>
+              </FEmptyState>
               <FShoppingItemTable v-else :rows="filteredItems" :compact="settings.compactView" @toggle="toggleItem" @edit="openEditItem" />
             </div>
           </FCard>
@@ -331,15 +178,12 @@
         </p>
 
         <div v-if="contacts.loading" class="text-sm text-muted">Ładowanie kontaktów...</div>
-        <div
-          v-else-if="!contacts.contacts.length"
-          class="rounded-[14px] border border-dashed border-border p-4 text-sm text-muted"
-        >
+        <FEmptyState v-else-if="!contacts.contacts.length" container-class="p-4">
           Najpierw dodaj kontakty z menu avatara: `Kontakty`.
-        </div>
-        <div v-else-if="!availableContacts.length" class="rounded-[14px] border border-dashed border-border p-4 text-sm text-muted">
+        </FEmptyState>
+        <FEmptyState v-else-if="!availableContacts.length" container-class="p-4">
           Wszyscy Twoi znajomi z kontaktów są już na tej liście.
-        </div>
+        </FEmptyState>
         <div v-else class="grid gap-3">
           <button
             v-for="contact in availableContacts"
@@ -371,21 +215,21 @@ import {
   mdiAccountGroupOutline,
   mdiAccountMultipleOutline,
   mdiAccountOutline,
-  mdiAccountPlusOutline,
   mdiArrowLeft,
   mdiNoteOutline,
   mdiPlus,
-  mdiTrashCanOutline,
 } from '@mdi/js'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FAvatar from '@/components/FAvatar.vue'
 import FButton from '@/components/FButton.vue'
 import FCard from '@/components/FCard.vue'
-import FMessage from '@/components/FMessage.vue'
+import FEmptyState from '@/components/FEmptyState.vue'
 import FPopup from '@/components/FPopup.vue'
-import FSelect from '@/components/FSelect.vue'
+import FShoppingItemForm from '@/components/FShoppingItemForm.vue'
 import FShoppingItemTable from '@/components/FShoppingItemTable.vue'
+import FShoppingListForm from '@/components/FShoppingListForm.vue'
+import FShoppingMembersPanel from '@/components/FShoppingMembersPanel.vue'
 import { useContactsStore } from '@/stores/contacts'
 import { useSettingsStore } from '@/stores/settings'
 import { type ShoppingList, useShoppingStore } from '@/stores/shopping'
@@ -403,7 +247,6 @@ const savingItem = ref(false)
 const addingContactToList = ref(false)
 const editingListId = ref<string | null>(null)
 const editingItemId = ref<string | null>(null)
-const settingsListId = ref<string | null>(null)
 const listError = ref('')
 const itemError = ref('')
 const memberError = ref('')
@@ -469,11 +312,7 @@ const memberCountLabel = computed(() => {
 const canManageListMembers = computed(
   () =>
     displayedList.value?.currentUserRole === 'owner' ||
-    shopping.selectedList?.currentUserRole === 'owner' ||
-    settingsList.value?.currentUserRole === 'owner',
-)
-const settingsList = computed(
-  () => shopping.lists.find((list) => list.id === settingsListId.value) ?? null,
+    shopping.selectedList?.currentUserRole === 'owner',
 )
 const availableContacts = computed(() => {
   const memberIds = new Set(shopping.members.map((member) => member.userId))
@@ -528,15 +367,6 @@ const goToLists = async () => {
     return
   }
   await router.push({ path: '/', query: { mode: 'new-list' } })
-}
-
-const openListSettings = async (listId: string) => {
-  settingsListId.value = listId
-  memberError.value = ''
-  memberSuccess.value = ''
-  shopping.selectedListId = listId
-  await shopping.loadMembers(listId)
-  editorMode.value = 'settings'
 }
 
 const openContactsPicker = async () => {
