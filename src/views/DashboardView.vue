@@ -16,17 +16,20 @@
                 custom-class="absolute right-4 top-4"
                 @click="closeEditor"
               />
-              <FButton
+              <div
                 v-else-if="displayedList"
-                type="button"
-                variant="ghost"
-                bordered
-                icon-only
-                :icon="mdiPlus"
-                aria-label="Dodaj produkt"
-                custom-class="absolute right-4 top-4"
-                @click="openCreateItem"
-              />
+                class="absolute right-4 top-4 flex items-center gap-2"
+              >
+                <FButton
+                  type="button"
+                  variant="ghost"
+                  bordered
+                  icon-only
+                  :icon="mdiPlus"
+                  aria-label="Dodaj produkt"
+                  @click="openCreateItem"
+                />
+              </div>
               <div class="min-w-0 pr-12">
                 <div class="flex min-w-0 items-center gap-3">
                   <button
@@ -38,16 +41,17 @@
                     {{ cardTitle }}
                   </button>
                   <h1 v-else class="m-0 text-3xl text-text">{{ cardTitle }}</h1>
-                  <span
+                  <FButton
                     v-if="displayedList && !isEditorMode"
-                    class="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
-                    :title="memberCountLabel"
+                    type="button"
+                    variant="ghost"
+                    bordered
+                    size="sm"
+                    :disabled="settlingItems || completedItemsCount < 1"
+                    @click="settleCompletedItems"
                   >
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path :d="memberCountIcon" />
-                    </svg>
-                    {{ shopping.members.length }}
-                  </span>
+                    {{ settlingItems ? 'Rozliczanie...' : 'Rozlicz' }}
+                  </FButton>
                 </div>
                 <div v-if="displayedList && !isEditorMode" class="mt-2 flex items-center gap-2">
                   <FButton
@@ -66,6 +70,12 @@
             </div>
 
             <div :class="isEditorMode ? 'grid gap-4 p-4' : 'grid gap-0 p-0'">
+              <FMessage v-if="settlementError && !isEditorMode" variant="error" custom-class="m-4">
+                {{ settlementError }}
+              </FMessage>
+              <FMessage v-if="settlementSuccess && !isEditorMode" variant="success" custom-class="m-4">
+                {{ settlementSuccess }}
+              </FMessage>
               <template v-if="isListSettingsMode">
                 <FShoppingMembersPanel
                   :members="shopping.members"
@@ -213,20 +223,14 @@
 </template>
 
 <script setup lang="ts">
-import {
-  mdiAccountGroupOutline,
-  mdiAccountMultipleOutline,
-  mdiAccountOutline,
-  mdiArrowLeft,
-  mdiNoteOutline,
-  mdiPlus,
-} from '@mdi/js'
+import { mdiArrowLeft, mdiNoteOutline, mdiPlus } from '@mdi/js'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FAvatar from '@/components/FAvatar.vue'
 import FButton from '@/components/FButton.vue'
 import FCard from '@/components/FCard.vue'
 import FEmptyState from '@/components/FEmptyState.vue'
+import FMessage from '@/components/FMessage.vue'
 import FPopup from '@/components/FPopup.vue'
 import FShoppingItemForm from '@/components/FShoppingItemForm.vue'
 import FShoppingItemTable from '@/components/FShoppingItemTable.vue'
@@ -246,6 +250,7 @@ const showListNotePopup = ref(false)
 const showContactsPickerPopup = ref(false)
 const savingList = ref(false)
 const savingItem = ref(false)
+const settlingItems = ref(false)
 const addingContactToList = ref(false)
 const loadingProductSuggestions = ref(false)
 const editingListId = ref<string | null>(null)
@@ -255,6 +260,8 @@ const listError = ref('')
 const itemError = ref('')
 const memberError = ref('')
 const memberSuccess = ref('')
+const settlementError = ref('')
+const settlementSuccess = ref('')
 const displayedList = ref<ShoppingList | null>(null)
 
 const listForm = ref({
@@ -286,6 +293,7 @@ const isListSettingsMode = computed(() => editorMode.value === 'settings')
 const isListFormMode = computed(() => editorMode.value === 'new-list' || editorMode.value === 'edit-list')
 const isItemFormMode = computed(() => editorMode.value === 'new-item' || editorMode.value === 'edit-item')
 const isEditorMode = computed(() => isListSettingsMode.value || isListFormMode.value || isItemFormMode.value)
+const completedItemsCount = computed(() => shopping.items.filter((item) => item.isCompleted).length)
 const cardTitle = computed(() => {
   if (editorMode.value === 'settings') return 'Opcje listy'
   if (editorMode.value === 'new-list') return 'Nowa lista'
@@ -301,18 +309,6 @@ const closeEditorLabel = computed(() => {
   return 'Zamknij'
 })
 
-const memberCountIcon = computed(() => {
-  const count = shopping.members.length
-  if (count <= 1) return mdiAccountOutline
-  if (count === 2) return mdiAccountMultipleOutline
-  return mdiAccountGroupOutline
-})
-const memberCountLabel = computed(() => {
-  const count = shopping.members.length
-  if (count <= 1) return '1 użytkownik'
-  if (count === 2) return '2 użytkowników'
-  return `${count} użytkowników`
-})
 const canManageListMembers = computed(
   () =>
     displayedList.value?.currentUserRole === 'owner' ||
@@ -520,6 +516,8 @@ const removeListFromSettings = async () => {
 const openCreateItem = () => {
   editingItemId.value = null
   itemError.value = ''
+  settlementError.value = ''
+  settlementSuccess.value = ''
   resetItemForm()
   editorMode.value = 'new-item'
 }
@@ -576,6 +574,25 @@ const toggleItem = async (itemId: string, completed: boolean) => {
     await shopping.toggleItem(itemId, completed)
   } catch (error) {
     itemError.value = error instanceof Error ? error.message : 'Nie udało się zmienić statusu.'
+  }
+}
+
+const settleCompletedItems = async () => {
+  if (!shopping.selectedList || completedItemsCount.value < 1) return
+
+  settlementError.value = ''
+  settlementSuccess.value = ''
+  settlingItems.value = true
+  try {
+    const result = await shopping.settleCompletedItems(shopping.selectedList.id)
+    settlementSuccess.value =
+      result.settledItemsCount === 1
+        ? 'Utworzono paragon i usunięto 1 produkt z listy.'
+        : `Utworzono paragon i usunięto ${result.settledItemsCount} produkty z listy.`
+  } catch (error) {
+    settlementError.value = error instanceof Error ? error.message : 'Nie udało się rozliczyć listy.'
+  } finally {
+    settlingItems.value = false
   }
 }
 
@@ -660,6 +677,8 @@ watch(
   () => route.params.listId,
   () => {
     displayedList.value = null
+    settlementError.value = ''
+    settlementSuccess.value = ''
     editorMode.value = route.query.mode === 'new-list' ? 'new-list' : 'view'
     void syncSelectedList()
   },

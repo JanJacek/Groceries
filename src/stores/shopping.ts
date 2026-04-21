@@ -43,6 +43,11 @@ export type ProductCatalogItem = {
   name: string
 }
 
+export type ShoppingReceiptSettlement = {
+  receiptId: string
+  settledItemsCount: number
+}
+
 export type ShoppingListMember = {
   userId: string
   email: string
@@ -93,6 +98,11 @@ type ShoppingListMemberRow = {
   avatar_initials: string | null
   joined_at: string
   is_current_user: boolean
+}
+
+type ShoppingReceiptSettlementRow = {
+  receipt_id: string
+  settled_items_count: number
 }
 
 type ShoppingListRealtimeRow = {
@@ -547,6 +557,28 @@ export const useShoppingStore = defineStore('shopping', () => {
     items.value = items.value.filter((item) => item.id !== itemId)
   }
 
+  const settleCompletedItems = async (listId = selectedListId.value) => {
+    if (!listId) throw new Error('Najpierw wybierz listę.')
+
+    const { data, error } = await supabase.rpc('settle_completed_shopping_items', {
+      p_list_id: listId,
+    })
+
+    if (error) throw error
+
+    const settlement = ((data ?? [])[0] ?? null) as ShoppingReceiptSettlementRow | null
+    if (!settlement) {
+      throw new Error('Nie udało się utworzyć paragonu.')
+    }
+
+    items.value = items.value.filter((item) => !(item.listId === listId && item.isCompleted))
+
+    return {
+      receiptId: settlement.receipt_id,
+      settledItemsCount: settlement.settled_items_count,
+    } satisfies ShoppingReceiptSettlement
+  }
+
   const addMemberFromContacts = async (userId: string) => {
     const listId = selectedListId.value
     if (!listId) throw new Error('Najpierw wybierz listę.')
@@ -786,6 +818,7 @@ export const useShoppingStore = defineStore('shopping', () => {
     updateItem,
     toggleItem,
     deleteItem,
+    settleCompletedItems,
     addMemberFromContacts,
     inviteMember,
     removeMember,

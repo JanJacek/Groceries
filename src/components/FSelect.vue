@@ -10,7 +10,18 @@
       ]"
       @click="toggleOpen"
     >
-      <span class="min-w-0 truncate">{{ selectedLabel }}</span>
+      <span class="flex min-w-0 items-center gap-2">
+        <svg
+          v-if="leadingIcon"
+          class="h-4 w-4 shrink-0 text-muted"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path :d="leadingIcon" />
+        </svg>
+        <span class="min-w-0 truncate">{{ selectedLabel }}</span>
+      </span>
       <svg class="h-4 w-4 shrink-0 text-muted" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path :d="mdiChevronDown" />
       </svg>
@@ -63,6 +74,7 @@ const props = withDefaults(
     ariaLabel?: string
     placeholder?: string
     disabled?: boolean
+    leadingIcon?: string
     wrapperClass?: string
     triggerClass?: string
     menuClass?: string
@@ -71,6 +83,7 @@ const props = withDefaults(
     ariaLabel: undefined,
     placeholder: 'Wybierz',
     disabled: false,
+    leadingIcon: undefined,
     wrapperClass: '',
     triggerClass: '',
     menuClass: '',

@@ -23,6 +23,7 @@
             :options="listOptions"
             aria-label="Wybierz listę"
             placeholder="Brak list"
+            :leading-icon="listSelectIcon"
             wrapper-class="min-w-[112px] max-w-[160px] sm:min-w-[160px] sm:max-w-[220px] md:min-w-[240px] md:max-w-[280px]"
             :trigger-class="selectTriggerClass"
             menu-class="max-h-80 overflow-y-auto"
@@ -66,7 +67,13 @@
 </template>
 
 <script setup lang="ts">
-import { mdiBasketOutline, mdiPlus } from '@mdi/js'
+import {
+  mdiAccountGroupOutline,
+  mdiAccountMultipleOutline,
+  mdiAccountOutline,
+  mdiBasketOutline,
+  mdiPlus,
+} from '@mdi/js'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FButton from '@/components/FButton.vue'
@@ -96,6 +103,13 @@ const listOptions = computed(() =>
     pending: list.accessStatus === 'pending',
   })),
 )
+
+const listSelectIcon = computed(() => {
+  const count = shopping.members.length
+  if (count <= 1) return mdiAccountOutline
+  if (count === 2) return mdiAccountMultipleOutline
+  return mdiAccountGroupOutline
+})
 
 const selectTriggerClass = computed(() =>
   [
