@@ -115,6 +115,16 @@ export const useReceiptsStore = defineStore('receipts', () => {
     }
   }
 
+  const deleteReceipt = async (receiptId: string) => {
+    const { error } = await supabase.from('receipts').delete().eq('id', receiptId)
+    if (error) throw error
+
+    receipts.value = receipts.value.filter((receipt) => receipt.id !== receiptId)
+    const nextReceiptItems = { ...receiptItems.value }
+    delete nextReceiptItems[receiptId]
+    receiptItems.value = nextReceiptItems
+  }
+
   const clear = () => {
     receipts.value = []
     receiptItems.value = {}
@@ -128,6 +138,7 @@ export const useReceiptsStore = defineStore('receipts', () => {
     latestReceiptId,
     loadReceipts,
     loadReceiptItems,
+    deleteReceipt,
     clear,
   }
 })
