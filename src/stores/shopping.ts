@@ -91,6 +91,11 @@ type ProductCatalogRow = {
   normalized_name?: string
 }
 
+type FrequentProductRow = {
+  product_id: string
+  name: string
+}
+
 type ShoppingListMemberRow = {
   user_id: string
   email: string
@@ -308,6 +313,19 @@ export const useShoppingStore = defineStore('shopping', () => {
         return leftName.localeCompare(rightName, 'pl', { sensitivity: 'base' })
       })
       .map((product) => product.name)
+  }
+
+  const listFrequentProducts = async (listId: string, limit = 6) => {
+    if (!listId || limit < 1) return []
+
+    const { data, error } = await supabase.rpc('list_frequent_products_for_user', {
+      p_list_id: listId,
+      p_limit: limit,
+    })
+
+    if (error) throw error
+
+    return ((data ?? []) as FrequentProductRow[]).map((product) => product.name)
   }
 
   const ensureProduct = async (rawName: string) => {
@@ -811,6 +829,7 @@ export const useShoppingStore = defineStore('shopping', () => {
     loadMembers,
     loadProducts,
     searchProducts,
+    listFrequentProducts,
     createList,
     updateList,
     deleteList,

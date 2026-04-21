@@ -626,15 +626,19 @@ let productSearchTimeout: ReturnType<typeof setTimeout> | null = null
 let productSearchRequestId = 0
 
 watch(
-  () => itemForm.value.name,
-  (name) => {
+  [
+    () => itemForm.value.name,
+    () => isItemFormMode.value,
+    () => shopping.selectedList?.id ?? null,
+  ],
+  ([name, itemFormMode, selectedListId]) => {
     if (productSearchTimeout) {
       clearTimeout(productSearchTimeout)
       productSearchTimeout = null
     }
 
     const trimmedName = name.trim()
-    if (!isItemFormMode.value || trimmedName.length < 1) {
+    if (!itemFormMode || !selectedListId) {
       loadingProductSuggestions.value = false
       productSuggestions.value = []
       return
@@ -642,15 +646,21 @@ watch(
 
     loadingProductSuggestions.value = true
     const requestId = ++productSearchRequestId
+    const suggestionDelay = trimmedName.length > 0 ? 260 : 0
 
     productSearchTimeout = setTimeout(() => {
-      void shopping
-        .searchProducts(trimmedName)
+      const suggestionRequest = trimmedName.length > 0
+        ? shopping.searchProducts(trimmedName)
+        : shopping.listFrequentProducts(selectedListId, 6)
+
+      void suggestionRequest
         .then((results) => {
           if (requestId !== productSearchRequestId) return
-          productSuggestions.value = results.filter(
-            (suggestion) => suggestion.toLocaleLowerCase('pl-PL') !== trimmedName.toLocaleLowerCase('pl-PL'),
-          )
+          productSuggestions.value = trimmedName.length > 0
+            ? results.filter(
+              (suggestion) => suggestion.toLocaleLowerCase('pl-PL') !== trimmedName.toLocaleLowerCase('pl-PL'),
+            )
+            : results
         })
         .catch(() => {
           if (requestId !== productSearchRequestId) return
@@ -660,8 +670,9 @@ watch(
           if (requestId !== productSearchRequestId) return
           loadingProductSuggestions.value = false
         })
-    }, 260)
+    }, suggestionDelay)
   },
+  { immediate: true },
 )
 
 watch(
