@@ -6,7 +6,7 @@
       @click="toggleMenu"
     >
       <span class="hidden sm:inline">{{ auth.user?.email }}</span>
-      <span :class="hasNotifications ? 'notification-pulse rounded-full border border-primary/50 p-[1px]' : ''">
+      <span :class="hasContactNotifications ? 'notification-pulse rounded-full border border-primary/50 p-[1px]' : ''">
         <FAvatar :text="avatarText" />
       </span>
     </button>
@@ -42,7 +42,7 @@
         to="/contacts"
         :class="[
           'flex items-center gap-2 rounded-[8px] px-3 py-2 text-sm text-text hover:bg-primary/5',
-          hasNotifications ? 'notification-pulse' : '',
+          hasContactNotifications ? 'notification-pulse' : '',
         ]"
         @click="closeMenu"
       >
@@ -103,9 +103,7 @@ const { isDarkTheme, toggleTheme } = useTheme()
 const isMenuOpen = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
 const avatarText = computed(() => settings.avatarInitials || auth.user?.email || '')
-const hasNotifications = computed(
-  () => contacts.hasPendingInvitations || shopping.hasPendingListInvitations,
-)
+const hasContactNotifications = computed(() => contacts.hasPendingInvitations)
 
 const closeMenu = () => {
   isMenuOpen.value = false
